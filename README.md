@@ -41,10 +41,10 @@
 
 ```bash
 # Install (recommended)
-curl -fsSL https://raw.githubusercontent.com/heatlabs/heat-cli/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/dzmbs/heat-cli/main/install.sh | bash
 
 # Or install with cargo
-cargo install --git https://github.com/heatlabs/heat-cli --bin heat
+cargo install --git https://github.com/dzmbs/heat-cli --bin heat
 
 # Create an account
 heat accounts create myaccount
@@ -79,16 +79,16 @@ Heat handles real money. It ships with guardrails:
 - **`--yes`** skips the prompt for non-interactive scripts.
 - **Non-TTY without `--yes`** fails with an error. Scripts must opt in explicitly.
 
-See [Safety](https://heatlabs.github.io/heat-cli/core/safety) for details.
+See [Safety](https://dzmbs.github.io/heat-cli/core/safety) for details.
 
 ## Installation
 
 ```bash
 # One-command install (recommended)
-curl -fsSL https://raw.githubusercontent.com/heatlabs/heat-cli/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/dzmbs/heat-cli/main/install.sh | bash
 
 # Or install with cargo
-cargo install --git https://github.com/heatlabs/heat-cli --bin heat
+cargo install --git https://github.com/dzmbs/heat-cli --bin heat
 
 # Or from a local checkout
 cargo install --path crates/heat-cli
@@ -97,7 +97,7 @@ cargo install --path crates/heat-cli
 heat --version
 ```
 
-See [Installation](https://heatlabs.github.io/heat-cli/introduction/installation) for platform details and release downloads.
+See [Installation](https://dzmbs.github.io/heat-cli/introduction/installation) for platform details and release downloads.
 
 ## Current Limitations
 
@@ -108,18 +108,18 @@ Heat v0.1.0 is an early release. Be honest with yourself:
 - Use with small amounts until you trust it
 - Polymarket API key commands are not yet functional (upstream SDK limitation)
 
-See [Limitations](https://heatlabs.github.io/heat-cli/reference/limitations) for the full list.
+See [Limitations](https://dzmbs.github.io/heat-cli/reference/limitations) for the full list.
 
 ## Documentation
 
-- [Getting Started](https://heatlabs.github.io/heat-cli/introduction/getting-started)
-- [Installation](https://heatlabs.github.io/heat-cli/introduction/installation)
-- [Accounts](https://heatlabs.github.io/heat-cli/core/accounts)
-- [Output Modes](https://heatlabs.github.io/heat-cli/core/output)
-- [Safety](https://heatlabs.github.io/heat-cli/core/safety)
-- [Hyperliquid](https://heatlabs.github.io/heat-cli/protocols/hyperliquid)
-- [Polymarket](https://heatlabs.github.io/heat-cli/protocols/polymarket)
-- [Limitations](https://heatlabs.github.io/heat-cli/reference/limitations)
+- [Getting Started](https://dzmbs.github.io/heat-cli/introduction/getting-started)
+- [Installation](https://dzmbs.github.io/heat-cli/introduction/installation)
+- [Accounts](https://dzmbs.github.io/heat-cli/core/accounts)
+- [Output Modes](https://dzmbs.github.io/heat-cli/core/output)
+- [Safety](https://dzmbs.github.io/heat-cli/core/safety)
+- [Hyperliquid](https://dzmbs.github.io/heat-cli/protocols/hyperliquid)
+- [Polymarket](https://dzmbs.github.io/heat-cli/protocols/polymarket)
+- [Limitations](https://dzmbs.github.io/heat-cli/reference/limitations)
 
 ## License
 

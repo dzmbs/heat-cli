@@ -5,13 +5,13 @@
 The installer detects your OS and architecture, downloads a prebuilt binary, and falls back to cargo if needed.
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/heatlabs/heat-cli/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/dzmbs/heat-cli/main/install.sh | bash
 ```
 
 By default, the binary is installed to `~/.local/bin`. Override with `HEAT_INSTALL_DIR`:
 
 ```bash
-HEAT_INSTALL_DIR=/usr/local/bin curl -fsSL https://raw.githubusercontent.com/heatlabs/heat-cli/main/install.sh | bash
+HEAT_INSTALL_DIR=/usr/local/bin curl -fsSL https://raw.githubusercontent.com/dzmbs/heat-cli/main/install.sh | bash
 ```
 
 ## From source (cargo install)
@@ -21,13 +21,13 @@ Requires Rust 1.92 or later.
 ### From Git
 
 ```bash
-cargo install --git https://github.com/heatlabs/heat-cli --bin heat
+cargo install --git https://github.com/dzmbs/heat-cli --bin heat
 ```
 
 ### From a local checkout
 
 ```bash
-git clone https://github.com/heatlabs/heat-cli.git
+git clone https://github.com/dzmbs/heat-cli.git
 cd heat-cli
 cargo install --path crates/heat-cli
 ```

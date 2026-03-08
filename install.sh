@@ -2,7 +2,7 @@
 set -euo pipefail
 
 VERSION="0.1.0"
-REPO="heatlabs/heat-cli"
+REPO="dzmbs/heat-cli"
 INSTALL_DIR="${HEAT_INSTALL_DIR:-$HOME/.local/bin}"
 
 say() {

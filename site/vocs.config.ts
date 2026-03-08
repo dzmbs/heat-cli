@@ -17,7 +17,7 @@ export default defineConfig({
   },
   socials: [
     {
-      link: "https://github.com/heatlabs/heat-cli",
+      link: "https://github.com/dzmbs/heat-cli",
       icon: "github",
     },
   ],
