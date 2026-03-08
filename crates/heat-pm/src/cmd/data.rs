@@ -403,11 +403,7 @@ impl From<&LiveVolume> for LiveVolumeDto {
     fn from(v: &LiveVolume) -> Self {
         Self {
             total: fmt_decimal(&v.total),
-            markets: v
-                .markets
-                .iter()
-                .map(MarketVolumeDto::from)
-                .collect(),
+            markets: v.markets.iter().map(MarketVolumeDto::from).collect(),
         }
     }
 }

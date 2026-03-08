@@ -16,7 +16,7 @@
 <p align="center">
   <img src="https://img.shields.io/badge/version-0.1.0-blue" />
   <img src="https://img.shields.io/badge/license-MIT-green" />
-  <img src="https://img.shields.io/badge/rust-1.91%2B-orange" />
+  <img src="https://img.shields.io/badge/rust-1.92%2B-orange" />
 </p>
 
 ---

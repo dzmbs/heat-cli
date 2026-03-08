@@ -16,11 +16,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@master
         with:
-          toolchain: "1.91"
-
+          toolchain: ""
       - uses: actions/cache@v4
         with:
           path: |
@@ -28,9 +26,7 @@ jobs:
             ~/.cargo/git
             target
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-cargo-
-
+          restore-keys: ${{ runner.os }}-cargo-
       - run: cargo check --workspace
 
   test:
@@ -38,11 +34,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@master
         with:
-          toolchain: "1.91"
-
+          toolchain: ""
       - uses: actions/cache@v4
         with:
           path: |
@@ -50,9 +44,7 @@ jobs:
             ~/.cargo/git
             target
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-cargo-
-
+          restore-keys: ${{ runner.os }}-cargo-
       - run: cargo test --workspace
 
   clippy:
@@ -60,12 +52,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@master
         with:
-          toolchain: "1.91"
+          toolchain: ""
           components: clippy
-
       - uses: actions/cache@v4
         with:
           path: |
@@ -73,9 +63,7 @@ jobs:
             ~/.cargo/git
             target
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-cargo-
-
+          restore-keys: ${{ runner.os }}-cargo-
       - run: cargo clippy --workspace -- -D warnings
 
   fmt:
@@ -83,12 +71,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@master
         with:
-          toolchain: "1.91"
+          toolchain: ""
           components: rustfmt
-
       - run: cargo fmt --all -- --check
 
   docs-build:
@@ -96,15 +82,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
           cache: npm
           cache-dependency-path: site/package-lock.json
-
       - run: npm ci
         working-directory: site
-
       - run: npm run build
         working-directory: site
