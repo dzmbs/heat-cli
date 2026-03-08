@@ -1,0 +1,138 @@
+# Accounts
+
+Heat uses named accounts as its primary identity abstraction. Each account maps to an encrypted private key stored locally.
+
+## Overview
+
+Accounts live in `~/.heat/accounts/` as TOML files. Keys live in `~/.heat/keys/` as Ethereum V3 keystore JSON files.
+
+When you create an account, Heat:
+1. Encrypts the private key with your password (scrypt + AES-128-CTR)
+2. Derives and caches the Ethereum address
+3. Stores account metadata in a TOML file
+
+The cached address means read-only commands (balance, positions, price) do not require your password.
+
+## Commands
+
+### List accounts
+
+```bash
+heat accounts list
+```
+
+Shows all accounts with their type. The default account is marked with `*`.
+
+### Show account details
+
+```bash
+heat accounts get myaccount
+```
+
+Displays name, type, key reference, address, and default network.
+
+### Create an account
+
+```bash
+heat accounts create myaccount --key 0x<64-hex-chars> --password-env HEAT_PASSWORD
+```
+
+Arguments:
+- `name` — a short name for this account (used in `--account` and `heat accounts use`)
+- `--key` — your private key as 0x-prefixed hex (32 bytes / 64 hex characters)
+- `--password-file` — path to a file containing the encryption password
+- `--password-env` — name of an environment variable containing the password
+
+You must provide a password via `--password-file`, `--password-env`, or the `HEAT_PASSWORD` environment variable.
+
+### Import an existing keystore
+
+```bash
+heat accounts import myaccount --keystore /path/to/keystore.json
+```
+
+Imports a standard Ethereum V3 keystore file. The keystore is copied into `~/.heat/keys/`. The original file is not modified.
+
+### Set the default account
+
+```bash
+heat accounts use myaccount
+```
+
+Writes the account name to `~/.heat/default-account`. This account is used when no `--account` flag or `HEAT_ACCOUNT` env var is set.
+
+### Remove an account
+
+```bash
+heat accounts remove myaccount
+```
+
+Removes the account metadata file. The key file in `~/.heat/keys/` is preserved — you must delete it manually if you want to remove the key entirely.
+
+## Account resolution
+
+Heat resolves which account to use in this order:
+
+1. `--account <name>` flag (highest priority)
+2. `HEAT_ACCOUNT` environment variable
+3. `default_account` in `~/.heat/config.toml`
+4. `~/.heat/default-account` file
+
+If none are set, commands that need an account fail with exit code 3 (auth error).
+
+## EVM keystore format
+
+Keys are stored in Ethereum V3 keystore format:
+- KDF: scrypt (n=8192, r=8, p=1)
+- Cipher: AES-128-CTR
+- Compatible with Foundry, MetaMask, geth, and other Ethereum tools
+
+Files are stored at `~/.heat/keys/<name>.json`.
+
+## Password handling
+
+Heat never stores passwords. It reads passwords from:
+
+1. `--password-file <path>` — reads password from a file
+2. `--password-env <VAR>` — reads password from the named environment variable
+3. `HEAT_PASSWORD` environment variable (fallback)
+
+For automation, `HEAT_PASSWORD` is the simplest approach:
+
+```bash
+export HEAT_PASSWORD="your-password"
+heat hl buy BTC 0.001 --price 95000 --yes
+```
+
+## Protocol-specific configuration
+
+Accounts can store per-protocol settings in the `[protocols]` section of their TOML file. For example, Polymarket requires a signature type:
+
+```toml
+# ~/.heat/accounts/pm-trading.toml
+name = "pm-trading"
+type = "evm-local"
+key_name = "pm-trading"
+address = "0x..."
+
+[protocols.polymarket]
+signature_type = "EOA"
+```
+
+See [Polymarket docs](/protocols/polymarket) for details on signature types.
+
+## Directory structure
+
+```
+~/.heat/
+  config.toml            # global config
+  default-account        # name of the default account
+  accounts/
+    myaccount.toml       # account metadata
+  keys/
+    myaccount.json       # V3 encrypted keystore
+```
+
+:::warning[Key security]
+Your private keys are encrypted locally. Heat never transmits your password or raw private key. Back up your keystore files and remember your password — there is no recovery path.
+:::

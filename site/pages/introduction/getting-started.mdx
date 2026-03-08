@@ -1,0 +1,115 @@
+# Getting Started
+
+This guide walks through first-time setup: install Heat, create an account, and run your first commands.
+
+:::info[What is Heat?]
+Heat is a unified crypto CLI for traders, AI agents, researchers, and terminal power users. It wraps Hyperliquid and Polymarket behind a single consistent interface with machine-readable output and a strict safety model.
+:::
+
+## 1. Install Heat
+
+```bash
+# One-command install (recommended)
+curl -fsSL https://raw.githubusercontent.com/heatlabs/heat-cli/main/install.sh | bash
+
+# Or install with cargo
+cargo install --git https://github.com/heatlabs/heat-cli --bin heat
+```
+
+Confirm it works:
+
+```bash
+heat --version
+heat --help
+```
+
+See [Installation](/introduction/installation) for other methods and platform details.
+
+## 2. Create an account
+
+Heat uses named accounts to manage keys. Each account has an encrypted keystore file stored locally in `~/.heat/keys/`.
+
+### Option A: Create from a private key
+
+```bash
+export HEAT_PASSWORD="your-strong-password"
+heat accounts create trading --key 0xabc123... --password-env HEAT_PASSWORD
+```
+
+### Option B: Import an existing keystore
+
+If you already have an Ethereum V3 keystore file (from Foundry, MetaMask, geth, etc.):
+
+```bash
+heat accounts import trading --keystore /path/to/keystore.json
+```
+
+## 3. Set a default account
+
+```bash
+heat accounts use trading
+```
+
+Override per-command with `--account`:
+
+```bash
+heat hl balance --account other-account
+```
+
+## 4. Verify your setup
+
+```bash
+heat accounts list
+heat accounts get trading
+heat config
+```
+
+## 5. Run your first commands
+
+### Hyperliquid
+
+```bash
+# Check a price (no account needed)
+heat hl price BTC
+
+# List available perp markets
+heat hl perps
+
+# Check your balance (needs account)
+heat hl balance
+
+# Preview an order without executing
+heat hl buy ETH 0.1 --price 3500 --dry-run
+```
+
+### Polymarket
+
+```bash
+# Browse prediction markets (no account needed)
+heat pm markets list --limit 5
+
+# Check approval status (needs account)
+heat pm approve check
+
+# Preview a trade
+heat pm buy <token_id> --price 0.55 --size 100 --dry-run
+```
+
+## 6. Account resolution order
+
+Heat resolves which account to use in this order:
+
+1. `--account` flag
+2. `HEAT_ACCOUNT` environment variable
+3. `default_account` in `~/.heat/config.toml`
+4. `~/.heat/default-account` file (set by `heat accounts use`)
+
+If none are set, commands that require an account fail with exit code 3 and a hint.
+
+## Next steps
+
+- [Accounts](/core/accounts) — full account management reference
+- [Hyperliquid](/protocols/hyperliquid) — all HL commands
+- [Polymarket](/protocols/polymarket) — all PM commands
+- [Output Modes](/core/output) — controlling Heat's output
+- [Safety](/core/safety) — dry-run, confirmations, and scripting

@@ -1,0 +1,121 @@
+# Output Modes
+
+Heat separates data from diagnostics and supports multiple output formats for both human and machine consumption.
+
+## The contract
+
+- **stdout** = command data (results, JSON, tables)
+- **stderr** = diagnostics (warnings, hints, progress, confirmations)
+
+This separation means you can safely pipe Heat's output into `jq` or other tools without diagnostic noise contaminating the data stream.
+
+## Four output modes
+
+### pretty (default in terminals)
+
+Human-readable tables and labels. This is the default when stdout is a TTY.
+
+```bash
+heat hl price BTC
+# BTC: 97421.5
+```
+
+### json (default in pipes)
+
+A single JSON object per command invocation. This is the default when stdout is piped to another program.
+
+```bash
+heat hl price BTC | jq .
+# {
+#   "asset": "BTC",
+#   "mid": "97421.5"
+# }
+```
+
+### ndjson (newline-delimited JSON)
+
+One JSON object per line. Useful for streaming commands and log processing.
+
+```bash
+heat hl stream trades BTC --output ndjson
+# {"coin":"BTC","side":"B","sz":"0.1","px":"97421.5",...}
+# {"coin":"BTC","side":"A","sz":"0.05","px":"97422.0",...}
+```
+
+### quiet
+
+Suppresses most output. Commands that support quiet mode emit a single scalar value (e.g., just the price or just the order ID).
+
+```bash
+heat hl price BTC -q
+# 97421.5
+
+PRICE=$(heat hl price BTC -q)
+```
+
+## Controlling the mode
+
+### Auto-detection (default)
+
+When you do not specify a format, Heat auto-detects:
+- TTY stdout → `pretty`
+- Non-TTY stdout (pipe, redirect) → `json`
+
+### Explicit flags
+
+| Flag | Effect |
+|---|---|
+| `--json` | Force JSON output (shorthand for `--output json`) |
+| `--output pretty` | Force pretty output |
+| `--output json` | Force JSON output |
+| `--output ndjson` | Force NDJSON output |
+| `-q` or `--output quiet` | Force quiet output |
+
+Explicit flags override auto-detection. For example, `--json` gives you JSON even in a terminal.
+
+## Piping with jq
+
+Because piped commands default to JSON, Heat works naturally with `jq`:
+
+```bash
+# Extract a single field
+heat hl price ETH | jq -r .mid
+
+# Filter positions
+heat hl positions | jq '.[] | select(.unrealized_pnl | tonumber > 0)'
+
+# Get account value as a number
+heat hl balance | jq -r .account_value
+```
+
+## Errors in machine mode
+
+In JSON and NDJSON modes, errors are emitted as structured JSON to stdout:
+
+```json
+{
+  "error": {
+    "type": "validation",
+    "reason": "asset_not_found",
+    "message": "No price found for: FAKE",
+    "retryable": false,
+    "hint": "Use 'heat hl perps' or 'heat hl spot' to list available markets"
+  }
+}
+```
+
+In pretty and quiet modes, errors go to stderr as plain text.
+
+## Exit codes
+
+| Code | Meaning |
+|---|---|
+| 0 | Success |
+| 1 | Protocol or internal error |
+| 2 | Validation / usage error |
+| 3 | Auth error (no account, bad password) |
+| 4 | Network error (API unreachable) |
+
+:::tip[Agent-friendly design]
+The stdout/stderr split is intentional for agent use. Your orchestrator can capture stdout for structured data while stderr carries human-readable diagnostics. Exit codes give you semantic status without parsing output.
+:::

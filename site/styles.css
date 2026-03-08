@@ -1,0 +1,49 @@
+@import url("https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;700&display=swap");
+
+/* heat — fire orange accent */
+
+:root {
+  --heat-font-display: "Space Grotesk", "SF Pro Display", "Segoe UI", system-ui, sans-serif;
+}
+
+[data-layout="landing"] .vocs_Content,
+[data-layout="landing"] .vocs_HomePage {
+  font-family: var(--heat-font-display);
+}
+
+/* Center search on landing page */
+[data-layout="landing"] .vocs_DesktopTopNav .vocs_DesktopSearch_search {
+  margin: 0 auto;
+}
+
+:root {
+  --vocs-color_accent: #E8441A;
+  --vocs-color_accentHover: #d13d17;
+  --vocs-color_accentText: #fff;
+}
+
+:root.dark {
+  --vocs-color_accent: #FF6B35;
+  --vocs-color_accentHover: #ff8555;
+  --vocs-color_accentText: #000;
+}
+
+/* Landing page feature cards hover */
+.vocs_Content a[href]:has(> div) {
+  transition: border-color 0.2s, background-color 0.2s;
+}
+.vocs_Content a[href]:has(> div):hover {
+  border-color: #FF6B35 !important;
+  background: rgba(255, 107, 53, 0.04);
+}
+:root.dark .vocs_Content a[href]:has(> div):hover {
+  background: rgba(255, 107, 53, 0.08);
+}
+
+/* Orange tint on inline code */
+.vocs_Content :not(pre) > code {
+  color: #c9420f;
+}
+:root.dark .vocs_Content :not(pre) > code {
+  color: #FF6B35;
+}

@@ -1,0 +1,107 @@
+# Safety
+
+Heat handles real money. Its safety model prevents accidental execution of dangerous actions.
+
+## Dangerous actions
+
+The following commands are considered dangerous and require confirmation:
+
+**Hyperliquid:**
+- `heat hl buy` / `heat hl sell` — placing orders
+- `heat hl cancel` — cancelling orders
+- `heat hl leverage set` — changing leverage
+- `heat hl send` — sending tokens
+
+**Polymarket:**
+- `heat pm buy` / `heat pm sell` — placing orders
+- `heat pm cancel` — cancelling orders
+- `heat pm clob limit-order` / `heat pm clob market-order` — CLOB orders
+- `heat pm clob cancel-order` / `heat pm clob cancel-all` — CLOB cancellations
+- `heat pm ctf split` / `heat pm ctf merge` / `heat pm ctf redeem` — CTF operations
+- `heat pm approve set` — granting token approvals
+
+Read-only commands (price, balance, positions, market data) never require confirmation.
+
+## --dry-run
+
+Preview what a command would do without executing it. Dry-run output goes to stderr.
+
+```bash
+heat hl buy ETH 1.0 --price 3500 --dry-run
+```
+
+Output:
+```
+[dry-run] hl buy
+  asset: ETH
+  size: 1.0
+  price: 3500
+  notional: $3500
+  reduce_only: false
+[dry-run] No action taken.
+```
+
+Dry-run is available on all dangerous commands and always exits with code 0.
+
+## TTY confirmation
+
+When running in a terminal (TTY) without `--yes`, dangerous commands prompt for confirmation:
+
+```
+Confirm buy 1.0 ETH @ 3500? [y/N]
+```
+
+Only `y` (case-insensitive) proceeds. Anything else cancels the action.
+
+## --yes
+
+Skip the confirmation prompt:
+
+```bash
+heat hl buy ETH 1.0 --price 3500 --yes
+```
+
+This is required for scripts and automated workflows.
+
+## Non-TTY behavior
+
+When stdout is not a terminal (pipes, cron, CI), Heat is strict:
+
+- Dangerous commands without `--yes` **fail with an error**.
+- Heat never silently prompts on a non-TTY.
+- Scripts must explicitly opt in with `--yes`.
+
+This prevents accidental execution when a script is missing the confirmation flag.
+
+```bash
+# This fails in a script:
+heat hl buy ETH 1.0 --price 3500
+# error: Dangerous action requires confirmation: buy 1.0 ETH @ 3500
+# hint: Use --yes to confirm in non-interactive mode
+
+# This works:
+heat hl buy ETH 1.0 --price 3500 --yes
+```
+
+## Combining --dry-run with scripts
+
+A common pattern: preview first, then execute.
+
+```bash
+# Preview
+heat hl buy ETH 1.0 --price 3500 --dry-run
+
+# Execute
+heat hl buy ETH 1.0 --price 3500 --yes
+```
+
+## Summary
+
+| Context | No flag | --yes | --dry-run |
+|---|---|---|---|
+| TTY (terminal) | Prompts `[y/N]` | Executes immediately | Previews only |
+| Non-TTY (script) | Fails with error | Executes immediately | Previews only |
+
+:::danger[Real money]
+Heat operates on live exchange accounts with real funds. Always use `--dry-run` to preview orders before executing. Start with small amounts when testing new workflows.
+:::

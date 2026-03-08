@@ -1,0 +1,110 @@
+---
+title: Heat — One CLI for All of Finance
+content:
+  width: 100%
+layout: landing
+logo: false
+outline: false
+---
+
+import { HomePage } from 'vocs/components'
+
+<HomePage.Root>
+  <img src="/logo.svg" alt="Heat CLI" style={{ height: '80px', margin: '0 auto 4px' }} />
+  <HomePage.Tagline>One CLI for all of finance</HomePage.Tagline>
+
+<div className="max-md:-mx-[var(--vocs-content_horizontalPadding,24px)] max-md:[&_[data-v-code-container]]:!rounded-none max-md:[&_pre]:!whitespace-pre-wrap max-md:[&_pre]:!overflow-x-hidden max-md:[&_pre]:!break-all max-md:[&_code]:!block max-md:[&_code]:!whitespace-pre-wrap max-md:[&_code]:!break-all max-md:[&_.line]:!whitespace-pre-wrap max-md:[&_.line]:!break-all">
+```bash
+curl -fsSL https://raw.githubusercontent.com/heatlabs/heat-cli/main/install.sh | bash
+```
+</div>
+
+  <HomePage.Description>
+    Trade, inspect, and automate Hyperliquid and Polymarket from your terminal. For humans and AI agents.
+  </HomePage.Description>
+  <HomePage.Buttons>
+    <HomePage.Button href="/introduction/getting-started" variant="accent">Get Started</HomePage.Button>
+    <HomePage.Button href="/protocols/hyperliquid">Protocols</HomePage.Button>
+    <HomePage.Button href="https://github.com/heatlabs/heat-cli">GitHub</HomePage.Button>
+  </HomePage.Buttons>
+</HomePage.Root>
+
+<div style={{ maxWidth: '800px', margin: '0 auto' }}>
+
+{/* ── Why Heat ── */}
+
+<div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '16px', margin: '48px 0' }}>
+  <a href="/protocols/hyperliquid" style={{ textDecoration: 'none', color: 'inherit', padding: '24px', borderRadius: '12px', border: '1px solid var(--vocs-color_border)', transition: 'border-color 0.2s' }}>
+    <div style={{ fontWeight: 700, marginBottom: '4px' }}>Hyperliquid</div>
+    <div style={{ fontSize: '14px', opacity: 0.7 }}>Perps, spot, streaming trades. Price, buy, sell, cancel, leverage, send. Real-time WebSocket feeds.</div>
+  </a>
+  <a href="/protocols/polymarket" style={{ textDecoration: 'none', color: 'inherit', padding: '24px', borderRadius: '12px', border: '1px solid var(--vocs-color_border)', transition: 'border-color 0.2s' }}>
+    <div style={{ fontWeight: 700, marginBottom: '4px' }}>Polymarket</div>
+    <div style={{ fontSize: '14px', opacity: 0.7 }}>CLOB trading, market data, approvals, bridge, CTF. Full prediction market workflow.</div>
+  </a>
+  <a href="/core/output" style={{ textDecoration: 'none', color: 'inherit', padding: '24px', borderRadius: '12px', border: '1px solid var(--vocs-color_border)', transition: 'border-color 0.2s' }}>
+    <div style={{ fontWeight: 700, marginBottom: '4px' }}>Reliable Machine Output</div>
+    <div style={{ fontSize: '14px', opacity: 0.7 }}>stdout=data, stderr=diagnostics. JSON, NDJSON, pretty, quiet. Pipe to jq, feed to agents.</div>
+  </a>
+  <a href="/core/safety" style={{ textDecoration: 'none', color: 'inherit', padding: '24px', borderRadius: '12px', border: '1px solid var(--vocs-color_border)', transition: 'border-color 0.2s' }}>
+    <div style={{ fontWeight: 700, marginBottom: '4px' }}>Guardrails Built In</div>
+    <div style={{ fontSize: '14px', opacity: 0.7 }}>--dry-run previews. TTY confirmations. --yes to opt in for scripts. You stay in control.</div>
+  </a>
+  <a href="/core/accounts" style={{ textDecoration: 'none', color: 'inherit', padding: '24px', borderRadius: '12px', border: '1px solid var(--vocs-color_border)', transition: 'border-color 0.2s' }}>
+    <div style={{ fontWeight: 700, marginBottom: '4px' }}>Shared Accounts and Config</div>
+    <div style={{ fontSize: '14px', opacity: 0.7 }}>One keystore, multiple protocols. EVM accounts work across Hyperliquid and Polymarket.</div>
+  </a>
+  <a href="/reference/limitations" style={{ textDecoration: 'none', color: 'inherit', padding: '24px', borderRadius: '12px', border: '1px solid var(--vocs-color_border)', transition: 'border-color 0.2s' }}>
+    <div style={{ fontWeight: 700, marginBottom: '4px' }}>One Control Surface</div>
+    <div style={{ fontSize: '14px', opacity: 0.7 }}>Same flags, same output contract, same safety model across every protocol. Learn once, use everywhere.</div>
+  </a>
+</div>
+
+{/* ── Code example ── */}
+
+<div style={{ textAlign: 'center', marginTop: '64px' }}>
+
+<div style={{ fontSize: '13px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: '#FF6B35', marginBottom: '8px' }}>CLI</div>
+
+## One Tool, Multiple Protocols
+
+</div>
+
+```bash
+# Hyperliquid — check price, trade, stream
+heat hl price BTC
+heat hl buy ETH 0.5 --price 3500 --dry-run
+heat hl stream trades BTC | jq '.px'
+
+# Polymarket — browse markets, trade
+heat pm markets search "election"
+heat pm buy <token_id> --price 0.55 --size 100
+heat pm positions --json | jq '.[] | {market, size}'
+
+# Machine output — pipe-aware by default
+heat hl balance --json | jq '.account_value'
+```
+
+{/* ── Philosophy ── */}
+
+<div style={{ textAlign: 'center', marginTop: '64px' }}>
+
+<div style={{ fontSize: '13px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: '#FF6B35', marginBottom: '8px' }}>Philosophy</div>
+
+## Protocol-First Design
+
+</div>
+
+<div style={{ fontSize: '15px', opacity: 0.8, lineHeight: 1.7, margin: '16px 0 48px' }}>
+Every protocol gets its own first-class command tree — <code>heat hl</code>, <code>heat pm</code> — with native vocabulary and no forced abstractions. Heat owns the output contract, safety model, and account layer, while each protocol speaks its own language underneath.
+</div>
+
+---
+
+<div style={{ textAlign: 'center', fontSize: '14px', color: '#888', paddingBottom: '24px' }}>
+
+v0.1.0 — early release. Use with small amounts. [Limitations](/reference/limitations).
+
+</div>
+
+</div>

@@ -1,0 +1,216 @@
+# Hyperliquid
+
+All Hyperliquid commands live under `heat hl`.
+
+:::info[Network selection]
+Hyperliquid supports two networks. Use `--network testnet` for paper trading. Unknown network values are rejected to prevent silent mainnet fallback.
+:::
+
+## Network selection
+
+| Network | Flag | Description |
+|---|---|---|
+| Mainnet | (default) | Production trading |
+| Testnet | `--network testnet` | Paper trading |
+
+```bash
+heat hl price BTC --network testnet
+```
+
+## Commands
+
+### price
+
+Show the mid price for an asset.
+
+```bash
+heat hl price BTC
+heat hl price ETH
+heat hl price PURR/USDC    # spot pair
+```
+
+Quiet mode emits just the number:
+
+```bash
+PRICE=$(heat hl price BTC -q)
+```
+
+### perps
+
+List perpetual markets.
+
+```bash
+heat hl perps
+```
+
+Output includes name, index, size decimals, and max leverage.
+
+Filter by HIP-3 DEX:
+
+```bash
+heat hl perps --dex <dex_name>
+```
+
+### spot
+
+List spot markets.
+
+```bash
+heat hl spot
+```
+
+Output includes name, index, base token, and quote token.
+
+### balance
+
+Show account balances.
+
+```bash
+heat hl balance
+heat hl balance --address 0x...   # query a specific address
+```
+
+In pretty mode, displays a table of coins with total, available, and hold columns. Quiet mode emits the account value.
+
+### positions
+
+Show open perpetual positions.
+
+```bash
+heat hl positions
+heat hl positions --address 0x...
+```
+
+Output includes coin, size, entry price, position value, unrealized PnL, leverage, and liquidation price.
+
+### orders
+
+Show open orders.
+
+```bash
+heat hl orders
+heat hl orders --address 0x...
+```
+
+Output includes order ID, coin, side, size, and price.
+
+### buy
+
+Place a buy order. Requires an account.
+
+```bash
+# Limit order
+heat hl buy ETH 0.5 --price 3500
+
+# Market order (omit --price)
+heat hl buy ETH 0.5
+
+# With time-in-force
+heat hl buy ETH 0.5 --price 3500 --tif ioc
+
+# Reduce-only
+heat hl buy ETH 0.5 --price 3500 --reduce-only
+```
+
+Arguments:
+- `<asset>` — asset name (e.g., BTC, ETH)
+- `<size>` — order size
+- `--price <price>` — limit price (omit for market order)
+- `--tif <tif>` — time in force: `gtc` (default), `ioc`, `alo`
+- `--reduce-only` — reduce-only order
+
+Market orders use a 0.5% slippage from the mid price internally.
+
+Orders below $10 notional are rejected with a clear error.
+
+```bash
+# Preview without executing
+heat hl buy ETH 0.5 --price 3500 --dry-run
+```
+
+### sell
+
+Place a sell order. Same arguments as `buy`.
+
+```bash
+heat hl sell BTC 0.01 --price 100000
+heat hl sell BTC 0.01 --dry-run
+```
+
+### cancel
+
+Cancel orders.
+
+```bash
+# Cancel a specific order by ID
+heat hl cancel BTC --oid 12345
+
+# Cancel all orders for an asset
+heat hl cancel BTC --all
+
+# Cancel all orders across all assets
+heat hl cancel --all
+```
+
+Must specify `--oid` or `--all`. Orders are batched in groups of 64 (Hyperliquid API limit).
+
+### leverage
+
+View or set leverage.
+
+#### Show current leverage
+
+```bash
+heat hl leverage show
+```
+
+Displays leverage for all positions with non-zero size.
+
+#### Set leverage
+
+```bash
+heat hl leverage set BTC 10
+heat hl leverage set ETH 5 --isolated
+```
+
+Arguments:
+- `<asset>` — asset name
+- `<value>` — leverage multiplier (e.g., 5, 10, 20)
+- `--isolated` — use isolated margin (default is cross)
+
+### send
+
+Send USDC or spot tokens to another address.
+
+```bash
+heat hl send 0xDEST... 100
+heat hl send 0xDEST... 50 --token PURR
+```
+
+Arguments:
+- `<destination>` — recipient address
+- `<amount>` — amount to send
+- `--token <token>` — token to send (default: USDC)
+
+USDC sends use a dedicated endpoint. Other tokens use the spot send mechanism.
+
+### stream trades
+
+Stream real-time trades via WebSocket.
+
+```bash
+heat hl stream trades BTC
+```
+
+In pretty mode, prints each trade as it arrives. In JSON/NDJSON mode, emits one JSON object per trade.
+
+The connection auto-reconnects with exponential backoff if disconnected. Diagnostic messages (connected, disconnected, subscription confirmed) go to stderr.
+
+```bash
+# Pipe to jq for processing
+heat hl stream trades ETH --output ndjson | jq -r '.px'
+```
+
+:::warning[Dangerous commands]
+`buy`, `sell`, `cancel`, `leverage set`, and `send` are dangerous commands. They require `--yes` in non-TTY mode and prompt for confirmation in a terminal. Always use `--dry-run` to preview first.
+:::
