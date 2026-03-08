@@ -2,9 +2,41 @@
 
 All Hyperliquid commands live under `heat hl`.
 
+Hyperliquid is currently the simpler protocol in Heat: your Heat account address is the address you use for Hyperliquid reads and writes.
+
+For the recommended first-time flow, start with [Hyperliquid Onboarding](/protocols/hyperliquid-onboarding).
+
 :::info[Network selection]
 Hyperliquid supports two networks. Use `--network testnet` for paper trading. Unknown network values are rejected to prevent silent mainnet fallback.
 :::
+
+## What needs an account
+
+Read-only market commands do not need a signing account:
+
+- `price`
+- `perps`
+- `spot`
+
+Account and trading commands do:
+
+- `balance`
+- `positions`
+- `orders`
+- `buy`
+- `sell`
+- `cancel`
+- `leverage`
+- `send`
+- some user-specific streams
+
+## Funding
+
+:::warning[Manual for now]
+Heat does not yet include a Hyperliquid deposit or bridging command. Humans must fund the Hyperliquid account externally, then return to Heat to verify balances and trade.
+:::
+
+Use `heat accounts get <name>` to retrieve the account address you need to fund.
 
 ## Network selection
 
@@ -17,6 +49,15 @@ Hyperliquid supports two networks. Use `--network testnet` for paper trading. Un
 heat hl price BTC --network testnet
 ```
 
+## Best first commands
+
+```bash
+heat hl price BTC
+heat hl perps
+heat hl balance
+heat hl buy ETH 0.1 --price 3500 --dry-run
+```
+
 ## Commands
 
 ### price
@@ -26,7 +67,7 @@ Show the mid price for an asset.
 ```bash
 heat hl price BTC
 heat hl price ETH
-heat hl price PURR/USDC    # spot pair
+heat hl price PURR/USDC
 ```
 
 Quiet mode emits just the number:
@@ -67,10 +108,10 @@ Show account balances.
 
 ```bash
 heat hl balance
-heat hl balance --address 0x...   # query a specific address
+heat hl balance --address 0x...
 ```
 
-In pretty mode, displays a table of coins with total, available, and hold columns. Quiet mode emits the account value.
+In pretty mode, Heat displays balances per coin. Quiet mode emits the account value.
 
 ### positions
 
@@ -81,8 +122,6 @@ heat hl positions
 heat hl positions --address 0x...
 ```
 
-Output includes coin, size, entry price, position value, unrealized PnL, leverage, and liquidation price.
-
 ### orders
 
 Show open orders.
@@ -92,45 +131,35 @@ heat hl orders
 heat hl orders --address 0x...
 ```
 
-Output includes order ID, coin, side, size, and price.
-
 ### buy
 
 Place a buy order. Requires an account.
 
 ```bash
-# Limit order
+# limit order
 heat hl buy ETH 0.5 --price 3500
 
-# Market order (omit --price)
+# market order
 heat hl buy ETH 0.5
 
-# With time-in-force
+# custom time in force
 heat hl buy ETH 0.5 --price 3500 --tif ioc
 
-# Reduce-only
+# reduce-only
 heat hl buy ETH 0.5 --price 3500 --reduce-only
 ```
 
-Arguments:
-- `<asset>` — asset name (e.g., BTC, ETH)
-- `<size>` — order size
-- `--price <price>` — limit price (omit for market order)
-- `--tif <tif>` — time in force: `gtc` (default), `ioc`, `alo`
-- `--reduce-only` — reduce-only order
+Market orders use a small internal slippage buffer from the mid price.
 
-Market orders use a 0.5% slippage from the mid price internally.
-
-Orders below $10 notional are rejected with a clear error.
+Preview without executing:
 
 ```bash
-# Preview without executing
 heat hl buy ETH 0.5 --price 3500 --dry-run
 ```
 
 ### sell
 
-Place a sell order. Same arguments as `buy`.
+Place a sell order.
 
 ```bash
 heat hl sell BTC 0.01 --price 100000
@@ -142,75 +171,41 @@ heat hl sell BTC 0.01 --dry-run
 Cancel orders.
 
 ```bash
-# Cancel a specific order by ID
 heat hl cancel BTC --oid 12345
-
-# Cancel all orders for an asset
 heat hl cancel BTC --all
-
-# Cancel all orders across all assets
 heat hl cancel --all
 ```
-
-Must specify `--oid` or `--all`. Orders are batched in groups of 64 (Hyperliquid API limit).
 
 ### leverage
 
 View or set leverage.
 
-#### Show current leverage
-
 ```bash
 heat hl leverage show
-```
-
-Displays leverage for all positions with non-zero size.
-
-#### Set leverage
-
-```bash
 heat hl leverage set BTC 10
 heat hl leverage set ETH 5 --isolated
 ```
 
-Arguments:
-- `<asset>` — asset name
-- `<value>` — leverage multiplier (e.g., 5, 10, 20)
-- `--isolated` — use isolated margin (default is cross)
-
 ### send
 
-Send USDC or spot tokens to another address.
+Send USDC or spot tokens.
 
 ```bash
 heat hl send 0xDEST... 100
 heat hl send 0xDEST... 50 --token PURR
 ```
 
-Arguments:
-- `<destination>` — recipient address
-- `<amount>` — amount to send
-- `--token <token>` — token to send (default: USDC)
-
-USDC sends use a dedicated endpoint. Other tokens use the spot send mechanism.
-
 ### stream trades
 
-Stream real-time trades via WebSocket.
+Stream real-time trades.
 
 ```bash
 heat hl stream trades BTC
-```
-
-In pretty mode, prints each trade as it arrives. In JSON/NDJSON mode, emits one JSON object per trade.
-
-The connection auto-reconnects with exponential backoff if disconnected. Diagnostic messages (connected, disconnected, subscription confirmed) go to stderr.
-
-```bash
-# Pipe to jq for processing
 heat hl stream trades ETH --output ndjson | jq -r '.px'
 ```
 
+The connection auto-reconnects. Diagnostics go to stderr.
+
 :::warning[Dangerous commands]
-`buy`, `sell`, `cancel`, `leverage set`, and `send` are dangerous commands. They require `--yes` in non-TTY mode and prompt for confirmation in a terminal. Always use `--dry-run` to preview first.
+`buy`, `sell`, `cancel`, `leverage set`, and `send` are dangerous commands. They prompt in a terminal and require `--yes` in non-TTY mode. Use `--dry-run` first.
 :::

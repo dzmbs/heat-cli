@@ -1,0 +1,221 @@
+# Hyperliquid Onboarding
+
+This guide explains how to get from a fresh Heat install to your first safe Hyperliquid command.
+
+Heat uses your named Heat account as the signing wallet for Hyperliquid. There is no separate Hyperliquid wallet command tree.
+
+:::warning[Funding today is manual]
+Heat does **not** yet include a built-in bridge or deposit flow for Hyperliquid. For now, humans must fund the account externally, then return to Heat to inspect balances and trade.
+:::
+
+## What you need
+
+- a Heat account with an EVM private key
+- a password available to Heat for signing commands
+- funds already available on Hyperliquid for that address
+
+Read-only market commands do not need an account. Trading and account commands do.
+
+## 1. Create or import a Heat account
+
+Create from an EVM private key:
+
+```bash
+export HEAT_PASSWORD="your-strong-password"
+heat accounts create trading --key 0xYOUR_PRIVATE_KEY --password-env HEAT_PASSWORD
+```
+
+Or import an existing Ethereum V3 keystore:
+
+```bash
+heat accounts import trading --keystore /path/to/keystore.json
+```
+
+Set it as the default account:
+
+```bash
+heat accounts use trading
+```
+
+Show the account and copy the address:
+
+```bash
+heat accounts get trading
+```
+
+That address is the one you should use for Hyperliquid account funding.
+
+## 2. Choose network
+
+Heat supports:
+
+- `mainnet` — live trading
+- `testnet` — paper trading
+
+Examples:
+
+```bash
+heat hl price BTC
+heat hl price BTC --network testnet
+```
+
+Unknown network values are rejected. Heat will not silently fall back to mainnet.
+
+## 3. Fund the account externally
+
+Heat does not yet perform Hyperliquid deposits or bridging for you.
+
+For now, the correct human flow is:
+
+1. get your Heat account address with `heat accounts get <name>`
+2. open your external funding path for Hyperliquid
+3. deposit or bridge funds to that address outside Heat
+4. return to Heat and verify with `heat hl balance`
+
+## Agent instruction: how to ask for funding
+
+If an agent sees that Hyperliquid balance is empty, it should not invent a deposit command.
+Instead it should ask the human explicitly.
+
+Recommended wording:
+
+> Your Heat account is configured, but Heat does not yet support Hyperliquid funding inside the CLI. Please fund the Hyperliquid account for address `<ADDRESS>` externally, then tell me when to continue. After that I can verify balance, inspect markets, and place dry-run or live orders.
+
+Recommended agent flow:
+
+1. inspect account address
+2. tell the human the exact address
+3. ask them to fund externally
+4. wait for confirmation
+5. run `heat hl balance`
+6. only then suggest trading commands
+
+## 4. Verify the account after funding
+
+```bash
+heat hl balance
+heat hl positions
+heat hl orders
+```
+
+For read-only inspection of another address:
+
+```bash
+heat hl balance --address 0x...
+heat hl positions --address 0x...
+heat hl orders --address 0x...
+```
+
+## 5. Learn the market before trading
+
+Start with read-only commands:
+
+```bash
+heat hl price BTC
+heat hl perps
+heat hl spot
+```
+
+These are the best first commands for humans and agents.
+
+## 6. Preview before trading
+
+Use `--dry-run` first on dangerous commands.
+
+```bash
+heat hl buy ETH 0.1 --price 3500 --dry-run
+heat hl sell BTC 0.01 --dry-run
+```
+
+Dangerous Hyperliquid commands include:
+
+- `buy`
+- `sell`
+- `cancel`
+- `leverage set`
+- `send`
+
+In a terminal, Heat asks for confirmation. In non-TTY mode, scripts and agents must pass `--yes`.
+
+## 7. Place and manage trades
+
+```bash
+# limit order
+heat hl buy ETH 0.1 --price 3500
+
+# market order
+heat hl buy ETH 0.1
+
+# inspect open orders
+heat hl orders
+
+# cancel one order
+heat hl cancel ETH --oid 12345
+
+# cancel all BTC orders
+heat hl cancel BTC --all
+```
+
+## 8. Leverage and transfers
+
+Show leverage for open positions:
+
+```bash
+heat hl leverage show
+```
+
+Set leverage:
+
+```bash
+heat hl leverage set BTC 10
+heat hl leverage set ETH 5 --isolated
+```
+
+Send assets:
+
+```bash
+heat hl send 0xDESTINATION 100
+heat hl send 0xDESTINATION 50 --token PURR
+```
+
+## 9. Streaming for agents
+
+Use NDJSON for continuous machine-readable output:
+
+```bash
+heat hl stream trades BTC --output ndjson
+```
+
+This is the best starting stream for automation.
+
+## Minimal onboarding checklist
+
+```bash
+heat accounts create trading --key 0xYOUR_PRIVATE_KEY --password-env HEAT_PASSWORD
+heat accounts use trading
+heat accounts get trading
+# fund externally, then continue
+heat hl balance
+heat hl price BTC
+heat hl buy ETH 0.1 --price 3500 --dry-run
+```
+
+## Command map
+
+### Best first commands
+
+- `heat hl price`
+- `heat hl perps`
+- `heat hl balance`
+- `heat hl positions`
+- `heat hl buy --dry-run`
+- `heat hl orders`
+- `heat hl cancel`
+
+### When to use testnet
+
+Use `--network testnet` when:
+
+- you are validating agent behavior
+- you want paper trading
+- you want to test automation before using real funds

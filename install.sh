@@ -44,7 +44,7 @@ try_prebuilt() {
   say "Downloading Heat v${VERSION} for ${target}..."
 
   tmpdir="$(mktemp -d)"
-  trap 'rm -rf "$tmpdir"' EXIT
+  trap "rm -rf '$tmpdir'" EXIT
 
   if ! curl -fsSL "$url" -o "${tmpdir}/${artifact}"; then
     return 1

@@ -1,20 +1,72 @@
 # Polymarket
 
-All Polymarket commands live under `heat polymarket` (or the shorter alias `heat pm`).
+All Polymarket commands live under `heat polymarket` or `heat pm`.
 
-Polymarket is a prediction market on Polygon. Heat wraps the Gamma API (market data), CLOB API (order book trading), Data API (analytics), Bridge API, and on-chain CTF contracts.
+Polymarket is a prediction market on Polygon. Heat wraps the Gamma API, CLOB API, Data API, Bridge API, and on-chain CTF contracts.
 
-:::info[Signature type]
-Polymarket supports multiple wallet types (EOA, POLY_GNOSIS_SAFE, POLY_PROXY). Set `signature_type` in your account TOML or pass `--sig-type` per command. For a standard Ethereum key, use `EOA`.
+For the recommended first-time flow, start with [Polymarket Onboarding](/protocols/polymarket-onboarding).
+
+:::info[Default signature type]
+Heat currently defaults Polymarket to `proxy` unless you override it with `--sig-type` or configure `account.protocols.polymarket.signature_type`.
 :::
+
+## What needs an account
+
+Read-only discovery commands do not need a signing account:
+
+- `markets`
+- `events`
+- `tags`
+- `series`
+- `comments`
+- `profiles`
+- `sports`
+- `status`
+- read-only `clob` pricing and book commands
+
+Trading, account, approval, and on-chain commands do.
+
+## Funding
+
+:::warning[Partly manual for now]
+`heat pm bridge deposit` fetches Polymarket deposit addresses for the effective wallet, but Heat does not send the transfer for you. Humans still fund externally, then return to Heat for status, approvals, and trading.
+:::
+
+## Signature types
+
+Heat supports:
+
+- `proxy`
+- `eoa`
+- `gnosis-safe`
+
+Current precedence:
+
+1. `--sig-type`
+2. `account.protocols.polymarket.signature_type`
+3. default `proxy`
+
+In practice:
+
+- `eoa` uses the Heat signer address directly
+- `proxy` derives the effective Polymarket wallet from the Heat signer address
+- `gnosis-safe` derives the effective safe wallet from the Heat signer address
+
+## Best first commands
+
+```bash
+heat pm markets list --limit 5
+heat pm price <token_id> --side buy
+heat pm bridge deposit
+heat pm approve check
+heat pm buy <token_id> --price 0.55 --size 100 --dry-run
+```
 
 ## Helper commands
 
-These are the primary user-facing commands, designed for quick access to common operations.
+These are the recommended primary path for humans and agents.
 
 ### price
-
-Get the price for a token.
 
 ```bash
 heat pm price <token_id> --side buy
@@ -23,26 +75,20 @@ heat pm price <token_id> --side sell
 
 ### buy / sell
 
-Place a limit order.
-
 ```bash
 heat pm buy <token_id> --price 0.55 --size 100
 heat pm sell <token_id> --price 0.65 --size 50
 ```
 
-Optional `--sig-type` overrides the signature type.
+Optional `--sig-type` overrides the Polymarket signature type.
 
 ### cancel
-
-Cancel an order by ID.
 
 ```bash
 heat pm cancel <order_id>
 ```
 
 ### orders
-
-List open orders.
 
 ```bash
 heat pm orders
@@ -51,8 +97,6 @@ heat pm orders --market <condition_id>
 
 ### trades
 
-List recent trades.
-
 ```bash
 heat pm trades
 heat pm trades --market <condition_id>
@@ -60,25 +104,19 @@ heat pm trades --market <condition_id>
 
 ### positions
 
-List open positions.
-
 ```bash
 heat pm positions
-heat pm positions --user 0x...   # query a specific user
+heat pm positions --user 0x...
 heat pm positions --limit 50
 ```
 
 ### balance
 
-Check balance and allowance.
-
 ```bash
 heat pm balance
 ```
 
-## Markets (Gamma API)
-
-Browse and search Polymarket's market catalog.
+## Markets and discovery
 
 ### markets
 
@@ -141,11 +179,11 @@ heat pm sports teams
 heat pm status
 ```
 
-## CLOB (order book)
+## CLOB
 
-Lower-level access to Polymarket's central limit order book.
+Lower-level access to Polymarket's order book and authenticated trading.
 
-### Pricing (no auth required)
+### Pricing and market info
 
 ```bash
 heat pm clob price <token_id> --side buy
@@ -154,15 +192,8 @@ heat pm clob spread <token_id>
 heat pm clob book <token_id>
 heat pm clob last-trade-price <token_id>
 heat pm clob price-history <market> --range 1d
-```
-
-### Market info (no auth required)
-
-```bash
 heat pm clob market <condition_id>
 heat pm clob markets
-heat pm clob sampling-markets
-heat pm clob simplified-markets
 heat pm clob tick-size <token_id>
 heat pm clob fee-rate <token_id>
 heat pm clob neg-risk <token_id>
@@ -171,47 +202,26 @@ heat pm clob geoblock
 heat pm clob ok
 ```
 
-### Order management (auth required)
+### Order management
 
 ```bash
-# Limit order
 heat pm clob limit-order <token_id> --side buy --price 0.55 --size 100
-
-# Market order
 heat pm clob market-order <token_id> --side buy --amount 50
-
-# Get a specific order
 heat pm clob order <order_id>
-
-# List open orders
 heat pm clob orders --market <condition_id>
-
-# List trades
 heat pm clob trades --market <condition_id>
-
-# Cancel orders
 heat pm clob cancel-order <order_id>
 heat pm clob cancel-market-orders --market <condition_id>
 heat pm clob cancel-all
 ```
 
-### Balance (auth required)
+### Balance, notifications, rewards
 
 ```bash
 heat pm clob balance-allowance --asset-type collateral
 heat pm clob update-balance-allowance
-```
-
-### Notifications (auth required)
-
-```bash
 heat pm clob notifications
 heat pm clob delete-notifications <comma_separated_ids>
-```
-
-### Rewards (auth required)
-
-```bash
 heat pm clob earnings <YYYY-MM-DD>
 heat pm clob total-earnings <YYYY-MM-DD>
 heat pm clob reward-percentages
@@ -220,9 +230,7 @@ heat pm clob raw-rewards <condition_id>
 heat pm clob is-order-scoring <order_id>
 ```
 
-## Data (analytics)
-
-On-chain analytics and leaderboards.
+## Data
 
 ```bash
 heat pm data positions --user 0x... --limit 25
@@ -239,85 +247,41 @@ heat pm data builder-leaderboard --period all
 heat pm data builder-volume --period month
 ```
 
-Time periods: `day` / `1d`, `week` / `1w`, `month` / `1m`, `all`.
-
-When `--user` is omitted, the current account's address is used.
-
 ## Bridge
 
-Cross-chain deposit support.
-
 ```bash
-# Get deposit addresses for your account
 heat pm bridge deposit
-
-# Check deposit status
 heat pm bridge status
-
-# List supported chains and tokens
 heat pm bridge supported-assets
 ```
 
-The `deposit` command fetches deposit addresses (EVM, SVM, BTC) — it does not initiate a transfer. You send funds to the returned address from your external wallet.
+`deposit` is read-only and returns deposit addresses. You still fund externally.
 
-## CTF (Conditional Token Framework)
-
-On-chain operations for conditional tokens.
+## CTF
 
 ```bash
-# Split collateral into conditional tokens
 heat pm ctf split --collateral 0x... --condition-id 0x... --partition 1,2 --amount 1000
-
-# Merge conditional tokens back
 heat pm ctf merge --collateral 0x... --condition-id 0x... --partition 1,2 --amount 1000
-
-# Redeem resolved positions
 heat pm ctf redeem --collateral 0x... --condition-id 0x... --index-sets 1,2
-
-# Redeem neg-risk positions
 heat pm ctf redeem-neg-risk --condition-id 0x... --amounts 100,200
-
-# Compute IDs (read-only, no confirmation needed)
 heat pm ctf condition-id --oracle 0x... --question-id 0x...
 heat pm ctf collection-id --condition-id 0x... --index-set 1
 heat pm ctf position-id --collateral 0x... --collection-id 0x...
 ```
 
-Split, merge, and redeem are dangerous actions that require confirmation or `--yes`. They support `--dry-run`.
-
-## Approve (token approvals)
-
-Polymarket requires token approvals for its exchange contracts.
+## Approve
 
 ```bash
-# Check current approval status
 heat pm approve check
-
-# Grant max approvals for all exchange contracts
 heat pm approve set
 ```
 
-`approve set` is a dangerous action (on-chain transactions). It sets ERC20 and ERC1155 approvals for the CTF Exchange, Neg Risk Exchange, and Neg Risk Adapter contracts.
+`approve set` sends Polygon transactions and is dangerous.
 
-## Signature types
+## Polygon RPC
 
-Polymarket supports multiple wallet types. The signature type determines how orders are signed:
+For Polymarket on-chain provider calls, Heat currently uses:
 
-- **EOA** — externally owned account (standard Ethereum wallet)
-- **POLY_GNOSIS_SAFE** — Polymarket's Gnosis Safe proxy wallet
-- **POLY_PROXY** — Polymarket's proxy wallet
-
-Set the signature type per-account in the account TOML file:
-
-```toml
-[protocols.polymarket]
-signature_type = "EOA"
+```text
+https://polygon.drpc.org
 ```
-
-Or override per-command with `--sig-type`:
-
-```bash
-heat pm buy <token_id> --price 0.55 --size 100 --sig-type EOA
-```
-
-If you are using a standard Ethereum key directly, use `EOA`. If you have registered with Polymarket's web interface, your key may be associated with a proxy wallet — check with `heat pm approve check` to see which address has approvals.

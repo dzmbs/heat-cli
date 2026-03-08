@@ -1,6 +1,6 @@
 # Getting Started
 
-This guide walks through first-time setup: install Heat, create an account, and run your first commands.
+This guide walks through first-time setup: install Heat, create an account, understand funding, and run your first protocol commands.
 
 :::info[What is Heat?]
 Heat is a unified crypto CLI for traders, AI agents, researchers, and terminal power users. It wraps Hyperliquid and Polymarket behind a single consistent interface with machine-readable output and a strict safety model.
@@ -25,9 +25,9 @@ heat --help
 
 See [Installation](/introduction/installation) for other methods and platform details.
 
-## 2. Create an account
+## 2. Create a Heat account
 
-Heat uses named accounts to manage keys. Each account has an encrypted keystore file stored locally in `~/.heat/keys/`.
+Heat uses named accounts to manage keys. Each account has encrypted local key material plus account metadata under `~/.heat/`.
 
 ### Option A: Create from a private key
 
@@ -38,7 +38,7 @@ heat accounts create trading --key 0xabc123... --password-env HEAT_PASSWORD
 
 ### Option B: Import an existing keystore
 
-If you already have an Ethereum V3 keystore file (from Foundry, MetaMask, geth, etc.):
+If you already have an Ethereum V3 keystore file:
 
 ```bash
 heat accounts import trading --keystore /path/to/keystore.json
@@ -56,7 +56,7 @@ Override per-command with `--account`:
 heat hl balance --account other-account
 ```
 
-## 4. Verify your setup
+## 4. Verify account details
 
 ```bash
 heat accounts list
@@ -64,52 +64,129 @@ heat accounts get trading
 heat config
 ```
 
-## 5. Run your first commands
+The address shown by `heat accounts get trading` is important for onboarding.
+
+- Hyperliquid funding is currently done externally to that account address.
+- Polymarket uses the same Heat account for signing, but may derive a different effective Polymarket wallet depending on signature type.
+
+## 5. Understand funding today
+
+:::warning[Funding is still partly manual in v0.1]
+Heat does not yet provide a complete in-CLI bridge and funding flow across supported protocols. Humans still need to fund accounts externally, then return to Heat.
+:::
+
+### Hyperliquid
+
+Heat does not currently include a Hyperliquid deposit or bridge command.
+
+Current flow:
+
+1. get your account address with `heat accounts get trading`
+2. fund that address externally for Hyperliquid
+3. return to Heat and verify with `heat hl balance`
+
+### Polymarket
+
+Heat can fetch Polymarket deposit addresses, but it does not send the transfer itself.
+
+Current flow:
+
+1. run `heat pm bridge deposit`
+2. send funds externally to the returned deposit address
+3. check status with `heat pm bridge status`
+4. run approvals with `heat pm approve check` and `heat pm approve set`
+
+## 6. Run your first read-only commands
 
 ### Hyperliquid
 
 ```bash
-# Check a price (no account needed)
 heat hl price BTC
-
-# List available perp markets
 heat hl perps
+heat hl spot
+```
 
-# Check your balance (needs account)
+### Polymarket
+
+```bash
+heat pm markets list --limit 5
+heat pm markets search "election"
+heat pm price <token_id> --side buy
+```
+
+These are safe starting points and do not require live signing.
+
+## 7. Verify funded accounts
+
+### Hyperliquid
+
+```bash
 heat hl balance
+heat hl positions
+heat hl orders
+```
 
-# Preview an order without executing
+### Polymarket
+
+```bash
+heat pm bridge status
+heat pm approve check
+heat pm balance
+heat pm positions
+```
+
+## 8. Preview dangerous commands first
+
+Use `--dry-run` before any action that could move money or place an order.
+
+### Hyperliquid
+
+```bash
 heat hl buy ETH 0.1 --price 3500 --dry-run
 ```
 
 ### Polymarket
 
 ```bash
-# Browse prediction markets (no account needed)
-heat pm markets list --limit 5
-
-# Check approval status (needs account)
-heat pm approve check
-
-# Preview a trade
 heat pm buy <token_id> --price 0.55 --size 100 --dry-run
 ```
 
-## 6. Account resolution order
+## 9. Agent workflow guidance
+
+If you are building an agent on top of Heat, use this pattern:
+
+1. resolve or confirm the active account
+2. inspect addresses and balances
+3. if funding is missing, ask the human to fund externally
+4. re-check balances or deposit status
+5. use `--dry-run` before proposing a live action
+6. require explicit confirmation before real-money writes
+
+### Recommended agent wording for Hyperliquid
+
+> Your Heat account is configured, but Heat does not yet support Hyperliquid funding inside the CLI. Please fund address `<ADDRESS>` externally, then tell me when to continue.
+
+### Recommended agent wording for Polymarket
+
+> Your Heat account is configured, but Heat does not yet move funds on your behalf. Please send funds to the deposit address returned by `heat pm bridge deposit`, then tell me when to continue.
+
+## 10. Account resolution order
 
 Heat resolves which account to use in this order:
 
 1. `--account` flag
 2. `HEAT_ACCOUNT` environment variable
 3. `default_account` in `~/.heat/config.toml`
-4. `~/.heat/default-account` file (set by `heat accounts use`)
+4. `~/.heat/default-account` file set by `heat accounts use`
 
-If none are set, commands that require an account fail with exit code 3 and a hint.
+If none are set, commands that require an account fail with an auth error and a hint.
 
 ## Next steps
 
-- [Accounts](/core/accounts) — full account management reference
-- [Hyperliquid](/protocols/hyperliquid) — all HL commands
-- [Polymarket](/protocols/polymarket) — all PM commands
-- [Output Modes](/core/output) — controlling Heat's output
-- [Safety](/core/safety) — dry-run, confirmations, and scripting
+- [Hyperliquid Overview](/protocols/hyperliquid)
+- [Hyperliquid Onboarding](/protocols/hyperliquid-onboarding)
+- [Polymarket Overview](/protocols/polymarket)
+- [Polymarket Onboarding](/protocols/polymarket-onboarding)
+- [Accounts](/core/accounts)
+- [Output Modes](/core/output)
+- [Safety](/core/safety)

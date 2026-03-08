@@ -20,12 +20,14 @@ const docs = [
     text: "Hyperliquid",
     items: [
       { text: "Overview", link: "/protocols/hyperliquid" },
+      { text: "Onboarding", link: "/protocols/hyperliquid-onboarding" },
     ],
   },
   {
     text: "Polymarket",
     items: [
       { text: "Overview", link: "/protocols/polymarket" },
+      { text: "Onboarding", link: "/protocols/polymarket-onboarding" },
     ],
   },
   {

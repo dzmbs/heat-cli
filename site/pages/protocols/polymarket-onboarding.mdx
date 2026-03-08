@@ -1,0 +1,262 @@
+# Polymarket Onboarding
+
+This guide explains the correct Polymarket setup flow in Heat for both humans and agents.
+
+Polymarket is more complex than Hyperliquid because the signer address and the effective Polymarket wallet may differ.
+
+## The important model
+
+Heat reuses your Heat EVM account for Polymarket.
+
+There are two address concepts:
+
+- **EOA address** — the underlying signer from your Heat account
+- **Polymarket wallet address** — the effective funder / trading wallet used by Polymarket
+
+For some signature types, these are different addresses.
+
+## Signature types
+
+Heat currently supports:
+
+- `proxy`
+- `eoa`
+- `gnosis-safe`
+
+Current precedence is:
+
+1. `--sig-type`
+2. `account.protocols.polymarket.signature_type`
+3. default `proxy`
+
+:::info[Current default]
+Heat currently defaults Polymarket to `proxy`.
+That matches the reference Polymarket CLI setup flow and the SDK's automatic funder derivation model.
+:::
+
+## What the official Polymarket tooling does
+
+From the official CLI and SDK:
+
+- wallet setup creates or imports an EOA signer
+- proxy or safe wallet addresses are derived from that signer address
+- deposits are sent to the effective Polymarket wallet
+- approvals are required before trading
+- the SDK authenticates the CLOB client using the signer plus signature type
+
+That means the right mental model is:
+
+> create Heat account → derive effective Polymarket wallet → deposit funds → set approvals → trade
+
+## 1. Create or import a Heat account
+
+```bash
+export HEAT_PASSWORD="your-strong-password"
+heat accounts create trading --key 0xYOUR_PRIVATE_KEY --password-env HEAT_PASSWORD
+heat accounts use trading
+heat accounts get trading
+```
+
+This is local account setup only. It does **not** call Polygon RPC and does **not** send any on-chain transaction.
+
+## 2. Understand what address Polymarket will use
+
+Heat signs with your Heat EVM key, but the effective Polymarket wallet depends on signature type:
+
+- `eoa` → use the signer address directly
+- `proxy` → derive a proxy wallet from the signer address
+- `gnosis-safe` → derive a safe wallet from the signer address
+
+In Heat, bridge and trading flows default to the effective Polymarket wallet, not always the raw signer address.
+
+## 3. Get deposit addresses
+
+Use the Heat bridge command:
+
+```bash
+heat pm bridge deposit
+```
+
+This fetches deposit addresses for the current account's effective Polymarket wallet.
+
+The command is read-only. It does not move funds.
+
+You can also inspect supported bridge assets:
+
+```bash
+heat pm bridge supported-assets
+```
+
+## 4. Fund externally
+
+Heat currently does **not** perform the transfer for you. The bridge command only returns the deposit addresses.
+
+So the correct human flow is:
+
+1. run `heat pm bridge deposit`
+2. copy the returned deposit address for the chain you want to use
+3. send funds from an external wallet or exchange
+4. return to Heat and check status
+
+## Agent instruction: how to ask for funding
+
+If an agent needs the user to fund Polymarket, it should ask explicitly and include the correct address context.
+
+Recommended wording:
+
+> Your Heat account is configured for Polymarket, but Heat does not yet move funds on your behalf. Please send funds to the Polymarket deposit address returned by `heat pm bridge deposit`, then tell me when to continue. After funding lands, I can check deposit status, approvals, balances, and prepare orders.
+
+Recommended agent flow:
+
+1. run `heat pm bridge deposit`
+2. show the returned address to the human
+3. explain that Heat only fetches deposit instructions today
+4. wait for the human to fund externally
+5. run `heat pm bridge status`
+6. run `heat pm approve check`
+7. only then proceed to trading
+
+## 5. Check deposit status
+
+```bash
+heat pm bridge status
+```
+
+This uses the effective Polymarket wallet by default.
+
+## 6. Check and set approvals
+
+Polymarket trading requires approvals for exchange contracts.
+
+Check status:
+
+```bash
+heat pm approve check
+```
+
+Grant approvals:
+
+```bash
+heat pm approve set
+```
+
+`approve set` is dangerous because it sends Polygon transactions.
+
+Heat sets approvals for:
+
+- `CTF Exchange`
+- `Neg Risk Exchange`
+- `Neg Risk Adapter`
+
+## Important approval nuance
+
+Approval checks currently use the signer owner path anchored to the EOA address.
+That is correct for the current on-chain approval flow in Heat, but users and agents should still think of balances and trading in terms of the effective Polymarket wallet.
+
+## 7. Browse markets before trading
+
+Start with read-only discovery:
+
+```bash
+heat pm markets list --limit 5
+heat pm markets search "election"
+heat pm price <token_id> --side buy
+heat pm clob book <token_id>
+```
+
+These are the best first commands for humans and agents.
+
+## 8. Preview before trading
+
+Use `--dry-run` first:
+
+```bash
+heat pm buy <token_id> --price 0.55 --size 100 --dry-run
+heat pm sell <token_id> --price 0.65 --size 50 --dry-run
+```
+
+## 9. Trade and manage orders
+
+```bash
+# helper commands
+heat pm buy <token_id> --price 0.55 --size 100
+heat pm sell <token_id> --price 0.65 --size 50
+heat pm orders
+heat pm trades
+heat pm cancel <order_id>
+
+# lower-level CLOB commands
+heat pm clob market-order <token_id> --side buy --amount 50
+heat pm clob orders --market <condition_id>
+heat pm clob cancel-all
+```
+
+## 10. Positions, balances, and analytics
+
+```bash
+heat pm positions
+heat pm balance
+heat pm data positions --limit 25
+heat pm data trades --limit 25
+```
+
+## Polygon RPC used by Heat
+
+For Polymarket on-chain provider calls, Heat currently uses:
+
+```text
+https://polygon.drpc.org
+```
+
+This is used for read-only and wallet-backed Polygon calls such as approvals and CTF operations.
+It is **not** used when merely creating a Heat account.
+
+## Minimal onboarding checklist
+
+```bash
+heat accounts create trading --key 0xYOUR_PRIVATE_KEY --password-env HEAT_PASSWORD
+heat accounts use trading
+heat pm bridge deposit
+# fund externally, then continue
+heat pm bridge status
+heat pm approve check
+heat pm approve set
+heat pm markets list --limit 5
+heat pm buy <token_id> --price 0.55 --size 100 --dry-run
+```
+
+## Command map
+
+### Best first commands
+
+- `heat pm markets list`
+- `heat pm markets search`
+- `heat pm price`
+- `heat pm bridge deposit`
+- `heat pm bridge status`
+- `heat pm approve check`
+- `heat pm approve set`
+- `heat pm positions`
+- `heat pm buy --dry-run`
+
+### Helper path vs protocol-native path
+
+Use the helper commands when possible:
+
+- `price`
+- `buy`
+- `sell`
+- `cancel`
+- `orders`
+- `trades`
+- `positions`
+- `balance`
+
+Use the lower-level command trees when you need deeper protocol control:
+
+- `markets`, `events`, `tags`, `series`, `comments`, `profiles`, `sports`
+- `clob`
+- `data`
+- `ctf`
+- `bridge`
+- `approve`
