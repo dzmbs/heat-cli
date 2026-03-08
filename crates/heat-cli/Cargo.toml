@@ -1,0 +1,18 @@
+[package]
+name = "heat"
+version.workspace = true
+edition.workspace = true
+
+[[bin]]
+name = "heat"
+path = "src/main.rs"
+
+[dependencies]
+heat-core = { workspace = true }
+heat-hl = { path = "../heat-hl" }
+heat-pm = { path = "../heat-pm" }
+clap = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+tokio = { workspace = true }
+hex = "0.4"
