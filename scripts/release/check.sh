@@ -27,8 +27,8 @@ cargo test -q --workspace || { echo "FAIL: tests failed."; exit 1; }
 echo "      OK"
 
 # 5. release build
-echo "[5/6] cargo build --release -p heat-cli"
-cargo build --release -p heat-cli || { echo "FAIL: release build failed."; exit 1; }
+echo "[5/6] cargo build --release -p heat"
+cargo build --release -p heat || { echo "FAIL: release build failed."; exit 1; }
 echo "      OK"
 
 # 6. smoke test
