@@ -1,5 +1,9 @@
 <p align="center">
-  <img src="./logo.svg" alt="Heat CLI" width="280" />
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="./logo.svg" />
+    <source media="(prefers-color-scheme: light)" srcset="./logo-dark.svg" />
+    <img src="./logo-dark.svg" alt="Heat CLI" width="280" />
+  </picture>
 </p>
 
 <p align="center">
