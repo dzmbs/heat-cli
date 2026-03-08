@@ -1,0 +1,24 @@
+[package]
+name = "heat-core"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+serde = { workspace = true }
+serde_json = { workspace = true }
+toml = { workspace = true }
+thiserror = { workspace = true }
+
+# keystore
+aes = "0.8"
+ctr = "0.9"
+scrypt = { version = "0.11", default-features = false }
+rand = "0.8"
+sha3 = "0.10"
+hex = "0.4"
+uuid = { version = "1", features = ["v4"] }
+zeroize = { version = "1", features = ["derive"] }
+k256 = "0.13"
+
+# misc
+atty = "0.2"
