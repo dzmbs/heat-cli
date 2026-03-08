@@ -1,0 +1,32 @@
+# Reference repos (cloned for study, not part of heat)
+reference/
+
+# Rust
+target/
+Cargo.lock
+
+# Docs site
+site/node_modules/
+site/dist/
+site/.vocs/
+
+# OS
+.DS_Store
+
+# IDE
+.idea/
+.vscode/
+*.swp
+
+# Environment
+.env
+.env.*
+
+# Internal planning docs (not for public release)
+PLAN.md
+ROADMAP.md
+CHECKLIST.md
+CLAUDE.md
+REVIEW_GUIDE.md
+UPSTREAM.md
+RESEARCH.md
