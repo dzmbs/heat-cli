@@ -79,7 +79,7 @@ Heat handles real money. It ships with guardrails:
 - **`--yes`** skips the prompt for non-interactive scripts.
 - **Non-TTY without `--yes`** fails with an error. Scripts must opt in explicitly.
 
-See [Safety](https://dzmbs.github.io/heat-cli/core/safety) for details.
+See [Safety](https://heat-cli.vercel.app/core/safety) for details.
 
 ## Installation
 
@@ -97,7 +97,7 @@ cargo install --path crates/heat-cli
 heat --version
 ```
 
-See [Installation](https://dzmbs.github.io/heat-cli/introduction/installation) for platform details and release downloads.
+See [Installation](https://heat-cli.vercel.app/introduction/installation) for platform details and release downloads.
 
 ## Current Limitations
 
@@ -108,18 +108,20 @@ Heat v0.1.0 is an early release. Be honest with yourself:
 - Use with small amounts until you trust it
 - Polymarket API key commands are not yet functional (upstream SDK limitation)
 
-See [Limitations](https://dzmbs.github.io/heat-cli/reference/limitations) for the full list.
+See [Limitations](https://heat-cli.vercel.app/reference/limitations) for the full list.
 
 ## Documentation
 
-- [Getting Started](https://dzmbs.github.io/heat-cli/introduction/getting-started)
-- [Installation](https://dzmbs.github.io/heat-cli/introduction/installation)
-- [Accounts](https://dzmbs.github.io/heat-cli/core/accounts)
-- [Output Modes](https://dzmbs.github.io/heat-cli/core/output)
-- [Safety](https://dzmbs.github.io/heat-cli/core/safety)
-- [Hyperliquid](https://dzmbs.github.io/heat-cli/protocols/hyperliquid)
-- [Polymarket](https://dzmbs.github.io/heat-cli/protocols/polymarket)
-- [Limitations](https://dzmbs.github.io/heat-cli/reference/limitations)
+- [Getting Started](https://heat-cli.vercel.app/introduction/getting-started)
+- [Installation](https://heat-cli.vercel.app/introduction/installation)
+- [Accounts](https://heat-cli.vercel.app/core/accounts)
+- [Output Modes](https://heat-cli.vercel.app/core/output)
+- [Safety](https://heat-cli.vercel.app/core/safety)
+- [Hyperliquid Overview](https://heat-cli.vercel.app/protocols/hyperliquid)
+- [Hyperliquid Onboarding](https://heat-cli.vercel.app/protocols/hyperliquid-onboarding)
+- [Polymarket Overview](https://heat-cli.vercel.app/protocols/polymarket)
+- [Polymarket Onboarding](https://heat-cli.vercel.app/protocols/polymarket-onboarding)
+- [Limitations](https://heat-cli.vercel.app/reference/limitations)
 
 ## License
 
