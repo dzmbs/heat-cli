@@ -1,0 +1,87 @@
+# Heat CLI v0.1.0
+
+First public release of Heat, a unified crypto CLI for traders, AI agents, researchers, and terminal power users.
+
+## Supported Protocols
+
+### Hyperliquid
+
+- Price queries, perpetual and spot market listings
+- Account balances, positions, open orders
+- Buy/sell order placement, order cancellation
+- Leverage management
+- USDC and spot token transfers
+- Real-time WebSocket market data streaming
+
+### Polymarket
+
+- Market and event browsing (Gamma API)
+- CLOB trading: limit orders, cancellations, order/trade history
+- Balance and allowance checks
+- Conditional token (CTF) operations
+- On-chain data and analytics
+- Cross-chain bridge operations
+- Token approval management
+
+## Key Features
+
+- **Account-first model** — encrypted V3 keystore (scrypt + AES-128-CTR), compatible with Foundry/MetaMask/geth
+- **Pipe-aware output** — TTY gets human-readable tables, piped output gets JSON; `--json` forces JSON, `--quiet` suppresses non-essential output, `--output ndjson` for streaming
+- **Safety-first** — `--dry-run` preview, TTY confirmation prompts for dangerous writes, `--yes` for automation
+- **Shared infrastructure** — unified error model, config layering (flags > env > config file), semantic exit codes
+- **Protocol-native escape hatches** — direct access to full protocol APIs alongside helper commands
+
+## Installation
+
+### From source (cargo)
+
+```bash
+cargo install --path crates/heat-cli
+```
+
+### From tarball
+
+Download the appropriate tarball for your platform from the release assets:
+
+```bash
+tar xzf heat-v0.1.0-macos-aarch64.tar.gz
+sudo cp heat-v0.1.0-macos-aarch64/heat /usr/local/bin/
+```
+
+## Quick Start
+
+```bash
+# Create an account
+heat accounts create myaccount --key 0x... --password-file pw.txt
+
+# Set as default
+heat accounts use myaccount
+
+# Hyperliquid: check ETH price
+heat hl price ETH
+
+# Hyperliquid: check balance
+heat hl balance
+
+# Polymarket: browse markets
+heat pm markets list
+```
+
+## Current Limitations
+
+- **No hardware wallet support** — only local encrypted keystores (V3 format)
+- **No cross-chain bridge** — Hyperliquid and Polymarket operate independently
+- **Local keys only** — no remote signer, HSM, or MPC key support
+- **Early release** — API surface may change in future versions
+- **No shell completions** — planned for a future release
+- **No TUI mode** — CLI only for now
+
+## Exit Codes
+
+| Code | Meaning |
+|------|---------|
+| 0 | Success |
+| 1 | Protocol or internal error |
+| 2 | Validation / usage error |
+| 3 | Authentication error |
+| 4 | Network error |

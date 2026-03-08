@@ -113,10 +113,10 @@ impl Account {
                 HeatError::internal("accounts_list", format!("Failed to read entry: {e}"))
             })?;
             let path = entry.path();
-            if path.extension().is_some_and(|ext| ext == "toml") {
-                if let Some(stem) = path.file_stem().and_then(|s| s.to_str()) {
-                    names.push(stem.to_string());
-                }
+            if path.extension().is_some_and(|ext| ext == "toml")
+                && let Some(stem) = path.file_stem().and_then(|s| s.to_str())
+            {
+                names.push(stem.to_string());
             }
         }
         names.sort();
@@ -147,10 +147,10 @@ pub fn resolve_account_name(flag: Option<&str>, config: &HeatConfig) -> Result<S
     if let Some(name) = flag {
         return Ok(name.to_string());
     }
-    if let Ok(name) = std::env::var("HEAT_ACCOUNT") {
-        if !name.is_empty() {
-            return Ok(name);
-        }
+    if let Ok(name) = std::env::var("HEAT_ACCOUNT")
+        && !name.is_empty()
+    {
+        return Ok(name);
     }
     if let Some(name) = &config.default_account {
         return Ok(name.clone());

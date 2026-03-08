@@ -1,5 +1,5 @@
 # Reference repos (cloned for study, not part of heat)
-reference/
+/reference/
 
 # Rust
 target/

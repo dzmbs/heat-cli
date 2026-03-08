@@ -1,0 +1,65 @@
+# Limitations
+
+Heat v0.1.0 is an early release. This page lists known limitations so you can plan accordingly.
+
+:::warning[Early release]
+Start with small amounts. Use `--dry-run` liberally. Verify behavior before scaling up. Report issues if you find them.
+:::
+
+## No built-in bridging or routing
+
+Heat does not move funds between protocols or chains for you. You must fund each protocol externally:
+
+- **Hyperliquid:** Deposit USDC via the Hyperliquid bridge or transfer from another address.
+- **Polymarket:** Use `heat pm bridge deposit` to get deposit addresses, then send funds from your wallet.
+
+Cross-chain routing is planned for a future release.
+
+## Local key accounts only
+
+Heat stores encrypted private keys locally in `~/.heat/keys/`. There is no support for:
+
+- Hardware wallets (Ledger, Trezor)
+- Remote signers or KMS
+- Multisig wallets
+- WalletConnect or browser wallet integration
+
+## No TUI or interactive mode
+
+Heat is a non-interactive CLI. There is no terminal UI, no interactive order entry, and no live dashboards. Use piping and scripting for automation.
+
+## Polymarket API key commands
+
+The `heat pm clob api-keys`, `heat pm clob create-api-key`, and `heat pm clob delete-api-key` commands exist in the CLI but are not yet functional due to an upstream SDK limitation. They will return errors if called.
+
+## Two protocols only
+
+Heat currently supports Hyperliquid and Polymarket. Additional protocols are planned but not yet implemented.
+
+## No shell completion
+
+Shell tab-completion (bash, zsh, fish) is not yet shipped. You can rely on `--help` at any level:
+
+```bash
+heat --help
+heat hl --help
+heat hl buy --help
+```
+
+## Single-account per command
+
+Each command operates with a single resolved account. There is no batch mode or multi-account fan-out built into Heat itself. You can script around this:
+
+```bash
+for acct in alice bob charlie; do
+  heat hl balance --account "$acct" --json
+done
+```
+
+## Known caveats
+
+- The `atty` crate is used for TTY detection; it is unmaintained but functional. A migration to `is-terminal` is planned.
+- Polymarket SDK integration depends on `polymarket-client-sdk` which may lag behind API changes.
+- Hyperliquid leverage and some exchange actions use raw HTTP requests pending upstream SDK support.
+- Password must be provided via file, env var, or `HEAT_PASSWORD` — no interactive password prompts yet.
+- All financial amounts are handled as strings/decimals to preserve precision; never as floating point.

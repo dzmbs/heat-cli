@@ -58,10 +58,10 @@ pub fn resolve<T: Clone>(
     if let Some(v) = flag {
         return v;
     }
-    if let Ok(env_val) = std::env::var(env_var) {
-        if let Some(v) = parse(&env_val) {
-            return v;
-        }
+    if let Ok(env_val) = std::env::var(env_var)
+        && let Some(v) = parse(&env_val)
+    {
+        return v;
     }
     config.unwrap_or(default)
 }

@@ -127,10 +127,10 @@ pub fn list_keys() -> Result<Vec<String>, HeatError> {
         let entry = entry
             .map_err(|e| HeatError::internal("keys_list", format!("Failed to read entry: {e}")))?;
         let path = entry.path();
-        if path.extension().is_some_and(|ext| ext == "json") {
-            if let Some(stem) = path.file_stem().and_then(|s| s.to_str()) {
-                names.push(stem.to_string());
-            }
+        if path.extension().is_some_and(|ext| ext == "json")
+            && let Some(stem) = path.file_stem().and_then(|s| s.to_str())
+        {
+            names.push(stem.to_string());
         }
     }
     names.sort();
