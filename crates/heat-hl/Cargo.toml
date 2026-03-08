@@ -1,0 +1,32 @@
+[package]
+name = "heat-hl"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+heat-core = { workspace = true }
+clap = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+tokio = { workspace = true }
+
+# Hyperliquid SDK
+hypersdk = "=0.2.6"
+
+# EVM signing
+alloy = { version = "1.5", features = ["signer-local"] }
+
+# Precision
+rust_decimal = "1.39"
+rust_decimal_macros = "1.39"
+
+# Asset fuzzy matching
+strsim = "0.11"
+
+# WebSocket streams
+futures = "0.3"
+
+# Raw exchange actions (leverage, etc. — until hypersdk exposes them)
+reqwest = { version = "0.12", features = ["json"] }
+rmp-serde = "1.3"
+sha3 = "0.10"
