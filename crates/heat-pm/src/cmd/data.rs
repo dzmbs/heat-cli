@@ -406,7 +406,7 @@ impl From<&LiveVolume> for LiveVolumeDto {
             markets: v
                 .markets
                 .iter()
-                .map(|mv| MarketVolumeDto::from(mv))
+                .map(MarketVolumeDto::from)
                 .collect(),
         }
     }

@@ -63,11 +63,10 @@ pub fn resolve_address(ctx: &Ctx) -> Result<Address, HeatError> {
 /// Best-effort backfill of address into account metadata.
 /// Silently ignores errors — this is an optimization, not critical.
 fn backfill_address(account_name: &str, address: &str) {
-    if let Ok(mut account) = Account::load(account_name) {
-        if account.address.is_none() {
-            account.address = Some(address.to_string());
-            // Account::save() fails if file exists, so we need to overwrite
-            let _ = account.save_update();
-        }
+    if let Ok(mut account) = Account::load(account_name)
+        && account.address.is_none()
+    {
+        account.address = Some(address.to_string());
+        let _ = account.save_update();
     }
 }
