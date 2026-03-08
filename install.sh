@@ -21,8 +21,8 @@ detect_target() {
   arch="$(uname -m)"
 
   case "$os" in
-    Linux)  os="unknown-linux-gnu" ;;
-    Darwin) os="apple-darwin" ;;
+    Linux)  os="linux" ;;
+    Darwin) os="macos" ;;
     *)      err "Unsupported operating system: $os" ;;
   esac
 
@@ -32,7 +32,7 @@ detect_target() {
     *)               err "Unsupported architecture: $arch" ;;
   esac
 
-  echo "${arch}-${os}"
+  echo "${os}-${arch}"
 }
 
 try_prebuilt() {
