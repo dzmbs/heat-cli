@@ -63,11 +63,7 @@ enum Command {
 async fn main() {
     let cli = Cli::parse();
 
-    let format = match OutputFormat::auto_detect(
-        cli.json,
-        cli.output.as_deref(),
-        cli.quiet,
-    ) {
+    let format = match OutputFormat::auto_detect(cli.json, cli.output.as_deref(), cli.quiet) {
         Ok(f) => f,
         Err(e) => {
             eprintln!("error: {e}");

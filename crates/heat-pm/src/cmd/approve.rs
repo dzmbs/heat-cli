@@ -7,8 +7,8 @@ use heat_core::ctx::Ctx;
 use heat_core::error::HeatError;
 use heat_core::output::OutputFormat;
 use heat_core::safety::DryRunPreview;
-use polymarket_client_sdk::contract_config;
 use polymarket_client_sdk::POLYGON;
+use polymarket_client_sdk::contract_config;
 use serde::Serialize;
 
 use crate::auth;
@@ -88,10 +88,7 @@ fn tx_err(op: &str, e: impl std::fmt::Display) -> HeatError {
 /// and neg-risk adapter (if present in the config).
 fn approval_targets() -> Result<Vec<(&'static str, Address)>, HeatError> {
     let config = contract_config(POLYGON, false).ok_or_else(|| {
-        HeatError::protocol(
-            "no_contract_config",
-            "No contract config found for Polygon",
-        )
+        HeatError::protocol("no_contract_config", "No contract config found for Polygon")
     })?;
     let neg_risk_config = contract_config(POLYGON, true).ok_or_else(|| {
         HeatError::protocol(
@@ -125,10 +122,7 @@ async fn check(ctx: &Ctx) -> Result<(), HeatError> {
     let owner: Address = auth::resolve_eoa_address(ctx)?;
 
     let config = contract_config(POLYGON, false).ok_or_else(|| {
-        HeatError::protocol(
-            "no_contract_config",
-            "No contract config found for Polygon",
-        )
+        HeatError::protocol("no_contract_config", "No contract config found for Polygon")
     })?;
     let collateral = config.collateral;
     let conditional_tokens = config.conditional_tokens;
@@ -182,11 +176,19 @@ async fn check(ctx: &Ctx) -> Result<(), HeatError> {
                 println!(
                     "    USDC allowance:  {} ({})",
                     t.erc20_allowance,
-                    if t.erc20_approved { "approved" } else { "NOT approved" }
+                    if t.erc20_approved {
+                        "approved"
+                    } else {
+                        "NOT approved"
+                    }
                 );
                 println!(
                     "    CTF approved:    {}",
-                    if t.erc1155_approved { "approved" } else { "NOT approved" }
+                    if t.erc1155_approved {
+                        "approved"
+                    } else {
+                        "NOT approved"
+                    }
                 );
             }
 
@@ -219,10 +221,7 @@ async fn set(ctx: &Ctx) -> Result<(), HeatError> {
     let targets = approval_targets()?;
 
     let config = contract_config(POLYGON, false).ok_or_else(|| {
-        HeatError::protocol(
-            "no_contract_config",
-            "No contract config found for Polygon",
-        )
+        HeatError::protocol("no_contract_config", "No contract config found for Polygon")
     })?;
     let collateral = config.collateral;
     let conditional_tokens = config.conditional_tokens;
@@ -260,7 +259,9 @@ async fn set(ctx: &Ctx) -> Result<(), HeatError> {
         });
     }
 
-    let result = ApprovalSetResult { targets: set_targets };
+    let result = ApprovalSetResult {
+        targets: set_targets,
+    };
 
     match ctx.output.format {
         OutputFormat::Pretty => {

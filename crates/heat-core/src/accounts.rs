@@ -71,7 +71,10 @@ impl Account {
             .with_hint("Remove the existing account first, or choose a different name"));
         }
         let content = toml::to_string_pretty(self).map_err(|e| {
-            HeatError::internal("account_serialize", format!("Failed to serialize account: {e}"))
+            HeatError::internal(
+                "account_serialize",
+                format!("Failed to serialize account: {e}"),
+            )
         })?;
         crate::fs::atomic_write(&path, content.as_bytes())
     }
@@ -87,7 +90,10 @@ impl Account {
             ));
         }
         let content = toml::to_string_pretty(self).map_err(|e| {
-            HeatError::internal("account_serialize", format!("Failed to serialize account: {e}"))
+            HeatError::internal(
+                "account_serialize",
+                format!("Failed to serialize account: {e}"),
+            )
         })?;
         crate::fs::atomic_write(&path, content.as_bytes())
     }
@@ -137,10 +143,7 @@ impl Account {
 
 /// Resolve which account to use.
 /// Precedence: --account flag > HEAT_ACCOUNT env > config default > ~/.heat/default-account
-pub fn resolve_account_name(
-    flag: Option<&str>,
-    config: &HeatConfig,
-) -> Result<String, HeatError> {
+pub fn resolve_account_name(flag: Option<&str>, config: &HeatConfig) -> Result<String, HeatError> {
     if let Some(name) = flag {
         return Ok(name.to_string());
     }
@@ -157,7 +160,10 @@ pub fn resolve_account_name(
     if default_file.exists() {
         let name = std::fs::read_to_string(&default_file)
             .map_err(|e| {
-                HeatError::internal("default_account", format!("Failed to read default-account: {e}"))
+                HeatError::internal(
+                    "default_account",
+                    format!("Failed to read default-account: {e}"),
+                )
             })?
             .trim()
             .to_string();
@@ -165,10 +171,8 @@ pub fn resolve_account_name(
             return Ok(name);
         }
     }
-    Err(
-        HeatError::auth("no_account", "No account specified")
-            .with_hint("Use --account <NAME>, set HEAT_ACCOUNT, or run 'heat accounts use <NAME>'"),
-    )
+    Err(HeatError::auth("no_account", "No account specified")
+        .with_hint("Use --account <NAME>, set HEAT_ACCOUNT, or run 'heat accounts use <NAME>'"))
 }
 
 /// Set the default account.

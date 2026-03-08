@@ -70,11 +70,10 @@ pub fn save_key(name: &str, private_key: &[u8], password: &[u8]) -> Result<(), H
     let path = dir.join(format!("{name}.json"));
 
     if path.exists() {
-        return Err(HeatError::validation(
-            "key_exists",
-            format!("Key '{name}' already exists"),
-        )
-        .with_hint("Remove the existing key first, or choose a different name"));
+        return Err(
+            HeatError::validation("key_exists", format!("Key '{name}' already exists"))
+                .with_hint("Remove the existing key first, or choose a different name"),
+        );
     }
 
     let mut keystore = encrypt(private_key, password)?;
@@ -83,7 +82,10 @@ pub fn save_key(name: &str, private_key: &[u8], password: &[u8]) -> Result<(), H
         keystore.address = Some(addr.strip_prefix("0x").unwrap_or(&addr).to_string());
     }
     let json = serde_json::to_string_pretty(&keystore).map_err(|e| {
-        HeatError::internal("keystore_serialize", format!("Failed to serialize keystore: {e}"))
+        HeatError::internal(
+            "keystore_serialize",
+            format!("Failed to serialize keystore: {e}"),
+        )
     })?;
 
     crate::fs::atomic_write_secure(&path, json.as_bytes())
@@ -119,13 +121,11 @@ pub fn list_keys() -> Result<Vec<String>, HeatError> {
         return Ok(vec![]);
     }
     let mut names = Vec::new();
-    let entries = std::fs::read_dir(&dir).map_err(|e| {
-        HeatError::internal("keys_list", format!("Failed to read keys dir: {e}"))
-    })?;
+    let entries = std::fs::read_dir(&dir)
+        .map_err(|e| HeatError::internal("keys_list", format!("Failed to read keys dir: {e}")))?;
     for entry in entries {
-        let entry = entry.map_err(|e| {
-            HeatError::internal("keys_list", format!("Failed to read entry: {e}"))
-        })?;
+        let entry = entry
+            .map_err(|e| HeatError::internal("keys_list", format!("Failed to read entry: {e}")))?;
         let path = entry.path();
         if path.extension().is_some_and(|ext| ext == "json") {
             if let Some(stem) = path.file_stem().and_then(|s| s.to_str()) {
@@ -146,9 +146,8 @@ pub fn remove_key(name: &str) -> Result<(), HeatError> {
             format!("Key not found: {name}"),
         ));
     }
-    std::fs::remove_file(&path).map_err(|e| {
-        HeatError::internal("key_remove", format!("Failed to remove key {name}: {e}"))
-    })
+    std::fs::remove_file(&path)
+        .map_err(|e| HeatError::internal("key_remove", format!("Failed to remove key {name}: {e}")))
 }
 
 // ── Encryption / Decryption ──
@@ -224,18 +223,14 @@ fn decrypt(keystore: &KeystoreFile, password: &[u8]) -> Result<Vec<u8>, HeatErro
         ));
     }
 
-    let salt = hex::decode(&keystore.crypto.kdfparams.salt).map_err(|_| {
-        HeatError::internal("keystore_decode", "Invalid salt hex")
-    })?;
-    let iv = hex::decode(&keystore.crypto.cipherparams.iv).map_err(|_| {
-        HeatError::internal("keystore_decode", "Invalid IV hex")
-    })?;
-    let ciphertext = hex::decode(&keystore.crypto.ciphertext).map_err(|_| {
-        HeatError::internal("keystore_decode", "Invalid ciphertext hex")
-    })?;
-    let expected_mac = hex::decode(&keystore.crypto.mac).map_err(|_| {
-        HeatError::internal("keystore_decode", "Invalid MAC hex")
-    })?;
+    let salt = hex::decode(&keystore.crypto.kdfparams.salt)
+        .map_err(|_| HeatError::internal("keystore_decode", "Invalid salt hex"))?;
+    let iv = hex::decode(&keystore.crypto.cipherparams.iv)
+        .map_err(|_| HeatError::internal("keystore_decode", "Invalid IV hex"))?;
+    let ciphertext = hex::decode(&keystore.crypto.ciphertext)
+        .map_err(|_| HeatError::internal("keystore_decode", "Invalid ciphertext hex"))?;
+    let expected_mac = hex::decode(&keystore.crypto.mac)
+        .map_err(|_| HeatError::internal("keystore_decode", "Invalid MAC hex"))?;
 
     let kp = &keystore.crypto.kdfparams;
     let mut derived_key = [0u8; SCRYPT_DKLEN];
@@ -282,7 +277,10 @@ pub fn resolve_password(
 ) -> Result<Option<String>, HeatError> {
     if let Some(path) = password_file {
         let content = std::fs::read_to_string(path).map_err(|e| {
-            HeatError::auth("password_file", format!("Failed to read password file: {e}"))
+            HeatError::auth(
+                "password_file",
+                format!("Failed to read password file: {e}"),
+            )
         })?;
         return Ok(Some(content.trim().to_string()));
     }
@@ -305,11 +303,17 @@ pub fn resolve_password(
 /// Accepts with or without 0x prefix, validates 40 hex chars.
 pub fn normalize_keystore_address(addr: &str) -> Result<String, HeatError> {
     let trimmed = addr.trim();
-    let hex_part = trimmed.strip_prefix("0x").or_else(|| trimmed.strip_prefix("0X")).unwrap_or(trimmed);
+    let hex_part = trimmed
+        .strip_prefix("0x")
+        .or_else(|| trimmed.strip_prefix("0X"))
+        .unwrap_or(trimmed);
     if hex_part.len() != 40 {
         return Err(HeatError::validation(
             "invalid_address",
-            format!("Invalid address in keystore: expected 40 hex chars, got {}", hex_part.len()),
+            format!(
+                "Invalid address in keystore: expected 40 hex chars, got {}",
+                hex_part.len()
+            ),
         ));
     }
     // Validate hex
@@ -324,9 +328,8 @@ pub fn normalize_keystore_address(addr: &str) -> Result<String, HeatError> {
 pub fn derive_evm_address(private_key: &[u8]) -> Result<String, HeatError> {
     use k256::ecdsa::SigningKey;
 
-    let signing_key = SigningKey::from_slice(private_key).map_err(|e| {
-        HeatError::validation("invalid_key", format!("Invalid private key: {e}"))
-    })?;
+    let signing_key = SigningKey::from_slice(private_key)
+        .map_err(|e| HeatError::validation("invalid_key", format!("Invalid private key: {e}")))?;
     let verifying_key = signing_key.verifying_key();
     // Uncompressed public key is 65 bytes (0x04 || x || y). We hash x || y (skip prefix).
     let pubkey_bytes = verifying_key.to_encoded_point(false);

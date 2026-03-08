@@ -61,12 +61,15 @@ async fn show(ctx: &Ctx) -> Result<(), HeatError> {
     let client = client_from_ctx(ctx)?;
     let address = signer::resolve_address(ctx)?;
 
-    let state = client.clearinghouse_state(address, None).await.map_err(|e| {
-        HeatError::network(
-            "clearinghouse_fetch",
-            format!("Failed to fetch clearinghouse state: {e}"),
-        )
-    })?;
+    let state = client
+        .clearinghouse_state(address, None)
+        .await
+        .map_err(|e| {
+            HeatError::network(
+                "clearinghouse_fetch",
+                format!("Failed to fetch clearinghouse state: {e}"),
+            )
+        })?;
 
     let infos: Vec<LeverageInfo> = state
         .asset_positions

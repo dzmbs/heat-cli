@@ -19,7 +19,6 @@ pub struct PmCmd {
 #[derive(Subcommand)]
 pub enum PmSubcommand {
     // ── Helper commands (primary user-facing path) ────────────────────
-
     /// Get price for a token
     Price {
         token_id: String,
@@ -87,7 +86,6 @@ pub enum PmSubcommand {
     },
 
     // ── Protocol-native command trees (escape hatches) ────────────────
-
     /// Market & event data (Gamma API)
     #[command(subcommand)]
     Markets(gamma::MarketsSubcommand),
@@ -145,7 +143,12 @@ pub async fn run(cmd: PmCmd, ctx: &Ctx) -> Result<(), HeatError> {
         PmSubcommand::Price { token_id, side } => {
             clob::run(clob::ClobSubcommand::Price { token_id, side }, ctx).await
         }
-        PmSubcommand::Buy { token_id, price, size, sig_type } => {
+        PmSubcommand::Buy {
+            token_id,
+            price,
+            size,
+            sig_type,
+        } => {
             clob::run(
                 clob::ClobSubcommand::LimitOrder {
                     token_id,
@@ -160,7 +163,12 @@ pub async fn run(cmd: PmCmd, ctx: &Ctx) -> Result<(), HeatError> {
             )
             .await
         }
-        PmSubcommand::Sell { token_id, price, size, sig_type } => {
+        PmSubcommand::Sell {
+            token_id,
+            price,
+            size,
+            sig_type,
+        } => {
             clob::run(
                 clob::ClobSubcommand::LimitOrder {
                     token_id,
@@ -176,25 +184,41 @@ pub async fn run(cmd: PmCmd, ctx: &Ctx) -> Result<(), HeatError> {
             .await
         }
         PmSubcommand::Cancel { order_id, sig_type } => {
-            clob::run(clob::ClobSubcommand::CancelOrder { order_id, sig_type }, ctx).await
+            clob::run(
+                clob::ClobSubcommand::CancelOrder { order_id, sig_type },
+                ctx,
+            )
+            .await
         }
         PmSubcommand::Orders { market, sig_type } => {
             clob::run(
-                clob::ClobSubcommand::Orders { market, asset_id: None, sig_type },
+                clob::ClobSubcommand::Orders {
+                    market,
+                    asset_id: None,
+                    sig_type,
+                },
                 ctx,
             )
             .await
         }
         PmSubcommand::Trades { market, sig_type } => {
             clob::run(
-                clob::ClobSubcommand::Trades { market, asset_id: None, sig_type },
+                clob::ClobSubcommand::Trades {
+                    market,
+                    asset_id: None,
+                    sig_type,
+                },
                 ctx,
             )
             .await
         }
         PmSubcommand::Positions { user, limit } => {
             data::run(
-                data::DataSubcommand::Positions { user, limit, offset: None },
+                data::DataSubcommand::Positions {
+                    user,
+                    limit,
+                    offset: None,
+                },
                 ctx,
             )
             .await

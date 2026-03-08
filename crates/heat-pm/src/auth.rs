@@ -69,9 +69,8 @@ pub fn resolve_signer(ctx: &Ctx) -> Result<PrivateKeySigner, HeatError> {
     let key_bytes = keystore::load_key(&account.key_name, password.as_bytes())?;
     let hex_key = format!("0x{}", hex::encode(&key_bytes));
 
-    let signer = PrivateKeySigner::from_str(&hex_key).map_err(|e| {
-        HeatError::auth("invalid_key", format!("Failed to create signer: {e}"))
-    })?;
+    let signer = PrivateKeySigner::from_str(&hex_key)
+        .map_err(|e| HeatError::auth("invalid_key", format!("Failed to create signer: {e}")))?;
 
     Ok(signer.with_chain_id(Some(POLYGON)))
 }
@@ -83,7 +82,10 @@ pub fn resolve_eoa_address(ctx: &Ctx) -> Result<Address, HeatError> {
 
     if let Some(addr) = &account.address {
         return addr.parse().map_err(|_| {
-            HeatError::validation("invalid_address", format!("Invalid account address: {addr}"))
+            HeatError::validation(
+                "invalid_address",
+                format!("Invalid account address: {addr}"),
+            )
         });
     }
 
@@ -152,12 +154,13 @@ pub async fn authenticated_clob_client(
 }
 
 /// Create an alloy provider for on-chain calls (read-only).
-pub async fn readonly_provider(
-) -> Result<impl alloy::providers::Provider + Clone, HeatError> {
-    ProviderBuilder::new()
-        .connect(RPC_URL)
-        .await
-        .map_err(|e| HeatError::network("rpc_connect", format!("Failed to connect to Polygon RPC: {e}")))
+pub async fn readonly_provider() -> Result<impl alloy::providers::Provider + Clone, HeatError> {
+    ProviderBuilder::new().connect(RPC_URL).await.map_err(|e| {
+        HeatError::network(
+            "rpc_connect",
+            format!("Failed to connect to Polygon RPC: {e}"),
+        )
+    })
 }
 
 /// Create an alloy provider with wallet for on-chain transactions.
@@ -224,8 +227,10 @@ mod tests {
         let err = parse_signature_type("bad").unwrap_err();
         let debug_str = format!("{err:?}");
         // The error carries the hint "Valid types: proxy, eoa, gnosis-safe"
-        assert!(debug_str.contains("proxy") || format!("{err}").contains("proxy"),
-            "error should mention valid types in its hint");
+        assert!(
+            debug_str.contains("proxy") || format!("{err}").contains("proxy"),
+            "error should mention valid types in its hint"
+        );
     }
 
     // ── wallet derivation ────────────────────────────────────────────────
@@ -236,7 +241,8 @@ mod tests {
     #[test]
     fn proxy_wallet_differs_from_eoa() {
         let eoa = address!("0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266");
-        let proxy = derive_proxy_wallet(eoa, POLYGON).expect("derivation should succeed on Polygon");
+        let proxy =
+            derive_proxy_wallet(eoa, POLYGON).expect("derivation should succeed on Polygon");
         assert_ne!(eoa, proxy, "proxy wallet must differ from the signing EOA");
     }
 
@@ -252,7 +258,10 @@ mod tests {
         let eoa = address!("0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266");
         let proxy = derive_proxy_wallet(eoa, POLYGON).unwrap();
         let safe = derive_safe_wallet(eoa, POLYGON).unwrap();
-        assert_ne!(proxy, safe, "proxy and safe wallet addresses must be distinct");
+        assert_ne!(
+            proxy, safe,
+            "proxy and safe wallet addresses must be distinct"
+        );
     }
 
     #[test]

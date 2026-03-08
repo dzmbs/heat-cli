@@ -63,7 +63,10 @@ pub async fn perps(args: PerpsArgs, ctx: &Ctx) -> Result<(), HeatError> {
             ctx.output.write_data(&infos, None).map_err(io_err)?;
         }
         OutputFormat::Pretty => {
-            println!("{:<12} {:>6} {:>8} {:>8}", "NAME", "INDEX", "SZ_DEC", "MAX_LEV");
+            println!(
+                "{:<12} {:>6} {:>8} {:>8}",
+                "NAME", "INDEX", "SZ_DEC", "MAX_LEV"
+            );
             for p in &infos {
                 println!(
                     "{:<12} {:>6} {:>8} {:>7}x",

@@ -223,12 +223,30 @@ mod tests {
     /// downstream consumers relying on the label would break silently.
     #[test]
     fn deposit_status_labels_are_stable_snake_case() {
-        assert_eq!(deposit_status_label(&DepositTransactionStatus::DepositDetected), "deposit_detected");
-        assert_eq!(deposit_status_label(&DepositTransactionStatus::Processing), "processing");
-        assert_eq!(deposit_status_label(&DepositTransactionStatus::OriginTxConfirmed), "origin_tx_confirmed");
-        assert_eq!(deposit_status_label(&DepositTransactionStatus::Submitted), "submitted");
-        assert_eq!(deposit_status_label(&DepositTransactionStatus::Completed), "completed");
-        assert_eq!(deposit_status_label(&DepositTransactionStatus::Failed), "failed");
+        assert_eq!(
+            deposit_status_label(&DepositTransactionStatus::DepositDetected),
+            "deposit_detected"
+        );
+        assert_eq!(
+            deposit_status_label(&DepositTransactionStatus::Processing),
+            "processing"
+        );
+        assert_eq!(
+            deposit_status_label(&DepositTransactionStatus::OriginTxConfirmed),
+            "origin_tx_confirmed"
+        );
+        assert_eq!(
+            deposit_status_label(&DepositTransactionStatus::Submitted),
+            "submitted"
+        );
+        assert_eq!(
+            deposit_status_label(&DepositTransactionStatus::Completed),
+            "completed"
+        );
+        assert_eq!(
+            deposit_status_label(&DepositTransactionStatus::Failed),
+            "failed"
+        );
     }
 
     #[test]

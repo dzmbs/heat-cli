@@ -7,12 +7,12 @@ use heat_core::error::HeatError;
 use heat_core::output::OutputFormat;
 use heat_core::safety::DryRunPreview;
 use polymarket_client_sdk::clob;
-use polymarket_client_sdk::clob::types::{Interval, Side};
 use polymarket_client_sdk::clob::types::request::{
     BalanceAllowanceRequest, CancelMarketOrderRequest, DeleteNotificationsRequest,
     LastTradePriceRequest, MidpointRequest, OrderBookSummaryRequest, OrdersRequest,
     PriceHistoryRequest, PriceRequest, SpreadRequest, TradesRequest, UserRewardsEarningRequest,
 };
+use polymarket_client_sdk::clob::types::{Interval, Side};
 use rust_decimal::Decimal;
 use serde::Serialize;
 
@@ -470,8 +470,10 @@ fn parse_side(s: &str) -> Result<Side, HeatError> {
     match s.to_lowercase().as_str() {
         "buy" => Ok(Side::Buy),
         "sell" => Ok(Side::Sell),
-        _ => Err(HeatError::validation("invalid_side", format!("Invalid side: {s}"))
-            .with_hint("Valid sides: buy, sell")),
+        _ => Err(
+            HeatError::validation("invalid_side", format!("Invalid side: {s}"))
+                .with_hint("Valid sides: buy, sell"),
+        ),
     }
 }
 
@@ -483,8 +485,10 @@ fn parse_interval(s: &str) -> Result<Interval, HeatError> {
         "1d" => Ok(Interval::OneDay),
         "1w" => Ok(Interval::OneWeek),
         "max" => Ok(Interval::Max),
-        _ => Err(HeatError::validation("invalid_interval", format!("Invalid interval: {s}"))
-            .with_hint("Valid intervals: 1m, 1h, 6h, 1d, 1w, max")),
+        _ => Err(
+            HeatError::validation("invalid_interval", format!("Invalid interval: {s}"))
+                .with_hint("Valid intervals: 1m, 1h, 6h, 1d, 1w, max"),
+        ),
     }
 }
 
@@ -494,8 +498,10 @@ fn parse_order_type(s: &str) -> Result<clob::types::OrderType, HeatError> {
         "fok" => Ok(clob::types::OrderType::FOK),
         "gtd" => Ok(clob::types::OrderType::GTD),
         "fak" => Ok(clob::types::OrderType::FAK),
-        _ => Err(HeatError::validation("invalid_order_type", format!("Invalid order type: {s}"))
-            .with_hint("Valid types: gtc, fok, gtd, fak")),
+        _ => Err(
+            HeatError::validation("invalid_order_type", format!("Invalid order type: {s}"))
+                .with_hint("Valid types: gtc, fok, gtd, fak"),
+        ),
     }
 }
 
@@ -507,15 +513,13 @@ fn parse_date(s: &str) -> Result<chrono::NaiveDate, HeatError> {
 }
 
 fn parse_u256(s: &str) -> Result<U256, HeatError> {
-    s.parse().map_err(|_| {
-        HeatError::validation("invalid_u256", format!("Invalid U256 value: {s}"))
-    })
+    s.parse()
+        .map_err(|_| HeatError::validation("invalid_u256", format!("Invalid U256 value: {s}")))
 }
 
 fn parse_b256(s: &str) -> Result<B256, HeatError> {
-    s.parse().map_err(|_| {
-        HeatError::validation("invalid_b256", format!("Invalid B256 value: {s}"))
-    })
+    s.parse()
+        .map_err(|_| HeatError::validation("invalid_b256", format!("Invalid B256 value: {s}")))
 }
 
 /// Map Side enum to a stable lowercase string.
@@ -567,7 +571,10 @@ pub async fn run(sub: ClobSubcommand, ctx: &Ctx) -> Result<(), HeatError> {
         ClobSubcommand::Price { token_id, side } => {
             let side = parse_side(&side)?;
             let client = clob::Client::default();
-            let req = PriceRequest::builder().token_id(parse_u256(&token_id)?).side(side).build();
+            let req = PriceRequest::builder()
+                .token_id(parse_u256(&token_id)?)
+                .side(side)
+                .build();
             let resp = client.price(&req).await.map_err(clob_err)?;
             match ctx.output.format {
                 OutputFormat::Pretty => println!("{}", resp.price),
@@ -577,7 +584,9 @@ pub async fn run(sub: ClobSubcommand, ctx: &Ctx) -> Result<(), HeatError> {
         }
         ClobSubcommand::Midpoint { token_id } => {
             let client = clob::Client::default();
-            let req = MidpointRequest::builder().token_id(parse_u256(&token_id)?).build();
+            let req = MidpointRequest::builder()
+                .token_id(parse_u256(&token_id)?)
+                .build();
             let resp = client.midpoint(&req).await.map_err(clob_err)?;
             match ctx.output.format {
                 OutputFormat::Pretty => println!("{}", resp.mid),
@@ -597,19 +606,34 @@ pub async fn run(sub: ClobSubcommand, ctx: &Ctx) -> Result<(), HeatError> {
             let resp = client.spread(&req).await.map_err(clob_err)?;
             match ctx.output.format {
                 OutputFormat::Pretty => println!("{}", resp.spread),
-                _ => write_json(ctx, serde_json::json!({ "spread": resp.spread.to_string() }))?,
+                _ => write_json(
+                    ctx,
+                    serde_json::json!({ "spread": resp.spread.to_string() }),
+                )?,
             }
             Ok(())
         }
         ClobSubcommand::Book { token_id } => {
             let client = clob::Client::default();
-            let req = OrderBookSummaryRequest::builder().token_id(parse_u256(&token_id)?).build();
+            let req = OrderBookSummaryRequest::builder()
+                .token_id(parse_u256(&token_id)?)
+                .build();
             let resp = client.order_book(&req).await.map_err(clob_err)?;
-            let bids: Vec<BookLevel> = resp.bids.iter()
-                .map(|b| BookLevel { price: b.price.to_string(), size: b.size.to_string() })
+            let bids: Vec<BookLevel> = resp
+                .bids
+                .iter()
+                .map(|b| BookLevel {
+                    price: b.price.to_string(),
+                    size: b.size.to_string(),
+                })
                 .collect();
-            let asks: Vec<BookLevel> = resp.asks.iter()
-                .map(|a| BookLevel { price: a.price.to_string(), size: a.size.to_string() })
+            let asks: Vec<BookLevel> = resp
+                .asks
+                .iter()
+                .map(|a| BookLevel {
+                    price: a.price.to_string(),
+                    size: a.size.to_string(),
+                })
                 .collect();
             let info = BookInfo {
                 market: format!("{}", resp.market),
@@ -634,21 +658,28 @@ pub async fn run(sub: ClobSubcommand, ctx: &Ctx) -> Result<(), HeatError> {
                         println!("Last trade:     {ltp}");
                     }
                 }
-                _ => { ctx.output.write_data(&info, None).map_err(io_err)?; }
+                _ => {
+                    ctx.output.write_data(&info, None).map_err(io_err)?;
+                }
             }
             Ok(())
         }
         ClobSubcommand::LastTradePrice { token_id } => {
             let client = clob::Client::default();
-            let req = LastTradePriceRequest::builder().token_id(parse_u256(&token_id)?).build();
+            let req = LastTradePriceRequest::builder()
+                .token_id(parse_u256(&token_id)?)
+                .build();
             let resp = client.last_trade_price(&req).await.map_err(clob_err)?;
             let side = side_str(&resp.side).to_owned();
             match ctx.output.format {
                 OutputFormat::Pretty => println!("{} ({})", resp.price, side),
-                _ => write_json(ctx, serde_json::json!({
-                    "price": resp.price.to_string(),
-                    "side": side,
-                }))?,
+                _ => write_json(
+                    ctx,
+                    serde_json::json!({
+                        "price": resp.price.to_string(),
+                        "side": side,
+                    }),
+                )?,
             }
             Ok(())
         }
@@ -675,7 +706,9 @@ pub async fn run(sub: ClobSubcommand, ctx: &Ctx) -> Result<(), HeatError> {
         ClobSubcommand::Market { condition_id } => {
             let client = clob::Client::default();
             let resp = client.market(&condition_id).await.map_err(clob_err)?;
-            let tokens: Vec<TokenInfo> = resp.tokens.iter()
+            let tokens: Vec<TokenInfo> = resp
+                .tokens
+                .iter()
                 .map(|t| TokenInfo {
                     token_id: t.token_id.to_string(),
                     outcome: t.outcome.clone(),
@@ -703,16 +736,22 @@ pub async fn run(sub: ClobSubcommand, ctx: &Ctx) -> Result<(), HeatError> {
                     println!("Question:         {}", info.question);
                     println!("Tokens:           {}", info.tokens.len());
                 }
-                _ => { ctx.output.write_data(&info, None).map_err(io_err)?; }
+                _ => {
+                    ctx.output.write_data(&info, None).map_err(io_err)?;
+                }
             }
             Ok(())
         }
         ClobSubcommand::Markets { cursor } => {
             let client = clob::Client::default();
             let resp = client.markets(cursor).await.map_err(clob_err)?;
-            let markets: Vec<MarketInfo> = resp.data.iter()
+            let markets: Vec<MarketInfo> = resp
+                .data
+                .iter()
                 .map(|m| {
-                    let tokens: Vec<TokenInfo> = m.tokens.iter()
+                    let tokens: Vec<TokenInfo> = m
+                        .tokens
+                        .iter()
                         .map(|t| TokenInfo {
                             token_id: t.token_id.to_string(),
                             outcome: t.outcome.clone(),
@@ -741,9 +780,13 @@ pub async fn run(sub: ClobSubcommand, ctx: &Ctx) -> Result<(), HeatError> {
         ClobSubcommand::SamplingMarkets { cursor } => {
             let client = clob::Client::default();
             let resp = client.sampling_markets(cursor).await.map_err(clob_err)?;
-            let markets: Vec<MarketInfo> = resp.data.iter()
+            let markets: Vec<MarketInfo> = resp
+                .data
+                .iter()
                 .map(|m| {
-                    let tokens: Vec<TokenInfo> = m.tokens.iter()
+                    let tokens: Vec<TokenInfo> = m
+                        .tokens
+                        .iter()
                         .map(|t| TokenInfo {
                             token_id: t.token_id.to_string(),
                             outcome: t.outcome.clone(),
@@ -772,9 +815,13 @@ pub async fn run(sub: ClobSubcommand, ctx: &Ctx) -> Result<(), HeatError> {
         ClobSubcommand::SimplifiedMarkets { cursor } => {
             let client = clob::Client::default();
             let resp = client.simplified_markets(cursor).await.map_err(clob_err)?;
-            let markets: Vec<SimplifiedMarketInfo> = resp.data.iter()
+            let markets: Vec<SimplifiedMarketInfo> = resp
+                .data
+                .iter()
                 .map(|m| {
-                    let tokens: Vec<SimplifiedTokenInfo> = m.tokens.iter()
+                    let tokens: Vec<SimplifiedTokenInfo> = m
+                        .tokens
+                        .iter()
                         .map(|t| SimplifiedTokenInfo {
                             token_id: t.token_id.to_string(),
                             outcome: t.outcome.clone(),
@@ -875,7 +922,13 @@ pub async fn run(sub: ClobSubcommand, ctx: &Ctx) -> Result<(), HeatError> {
 
         // ── Authenticated order commands ─────────────────────────────
         ClobSubcommand::LimitOrder {
-            token_id, side, price, size, order_type, post_only, sig_type,
+            token_id,
+            side,
+            price,
+            size,
+            order_type,
+            post_only,
+            sig_type,
         } => {
             let side = parse_side(&side)?;
             let ot = parse_order_type(&order_type)?;
@@ -927,15 +980,23 @@ pub async fn run(sub: ClobSubcommand, ctx: &Ctx) -> Result<(), HeatError> {
                     if result.success {
                         println!("Order placed: {}", result.order_id);
                     } else {
-                        println!("Order failed: {}", result.error.as_deref().unwrap_or("unknown"));
+                        println!(
+                            "Order failed: {}",
+                            result.error.as_deref().unwrap_or("unknown")
+                        );
                     }
                 }
-                _ => { ctx.output.write_data(&result, None).map_err(io_err)?; }
+                _ => {
+                    ctx.output.write_data(&result, None).map_err(io_err)?;
+                }
             }
             Ok(())
         }
         ClobSubcommand::MarketOrder {
-            token_id, side, amount, sig_type,
+            token_id,
+            side,
+            amount,
+            sig_type,
         } => {
             let side = parse_side(&side)?;
 
@@ -979,17 +1040,24 @@ pub async fn run(sub: ClobSubcommand, ctx: &Ctx) -> Result<(), HeatError> {
         ClobSubcommand::Order { order_id, sig_type } => {
             let client = auth::authenticated_clob_client(ctx, sig_type.as_deref()).await?;
             let resp = client.order(&order_id).await.map_err(clob_err)?;
-            write_json(ctx, serde_json::json!({
-                "order_id": resp.id,
-                "status": order_status_str(&resp.status),
-                "side": side_str(&resp.side),
-                "original_size": resp.original_size.to_string(),
-                "price": resp.price.to_string(),
-                "size_matched": resp.size_matched.to_string(),
-                "market": format!("{}", resp.market),
-            }))
+            write_json(
+                ctx,
+                serde_json::json!({
+                    "order_id": resp.id,
+                    "status": order_status_str(&resp.status),
+                    "side": side_str(&resp.side),
+                    "original_size": resp.original_size.to_string(),
+                    "price": resp.price.to_string(),
+                    "size_matched": resp.size_matched.to_string(),
+                    "market": format!("{}", resp.market),
+                }),
+            )
         }
-        ClobSubcommand::Orders { market, asset_id, sig_type } => {
+        ClobSubcommand::Orders {
+            market,
+            asset_id,
+            sig_type,
+        } => {
             let client = auth::authenticated_clob_client(ctx, sig_type.as_deref()).await?;
             let mut req = OrdersRequest::default();
             if let Some(m) = &market {
@@ -999,21 +1067,28 @@ pub async fn run(sub: ClobSubcommand, ctx: &Ctx) -> Result<(), HeatError> {
                 req.asset_id = Some(parse_u256(a)?);
             }
             let orders_page = client.orders(&req, None).await.map_err(clob_err)?;
-            let infos: Vec<serde_json::Value> = orders_page.data
+            let infos: Vec<serde_json::Value> = orders_page
+                .data
                 .iter()
-                .map(|o| serde_json::json!({
-                    "order_id": o.id,
-                    "status": order_status_str(&o.status),
-                    "side": side_str(&o.side),
-                    "original_size": o.original_size.to_string(),
-                    "price": o.price.to_string(),
-                    "size_matched": o.size_matched.to_string(),
-                    "market": format!("{}", o.market),
-                }))
+                .map(|o| {
+                    serde_json::json!({
+                        "order_id": o.id,
+                        "status": order_status_str(&o.status),
+                        "side": side_str(&o.side),
+                        "original_size": o.original_size.to_string(),
+                        "price": o.price.to_string(),
+                        "size_matched": o.size_matched.to_string(),
+                        "market": format!("{}", o.market),
+                    })
+                })
                 .collect();
             ctx.output.write_data(&infos, None).map_err(io_err)
         }
-        ClobSubcommand::Trades { market, asset_id, sig_type } => {
+        ClobSubcommand::Trades {
+            market,
+            asset_id,
+            sig_type,
+        } => {
             let client = auth::authenticated_clob_client(ctx, sig_type.as_deref()).await?;
             let mut req = TradesRequest::default();
             if let Some(m) = &market {
@@ -1023,7 +1098,8 @@ pub async fn run(sub: ClobSubcommand, ctx: &Ctx) -> Result<(), HeatError> {
                 req.asset_id = Some(parse_u256(a)?);
             }
             let trades_page = client.trades(&req, None).await.map_err(clob_err)?;
-            let infos: Vec<TradeInfo> = trades_page.data
+            let infos: Vec<TradeInfo> = trades_page
+                .data
                 .iter()
                 .map(|t| TradeInfo {
                     id: t.id.clone(),
@@ -1054,7 +1130,11 @@ pub async fn run(sub: ClobSubcommand, ctx: &Ctx) -> Result<(), HeatError> {
             };
             ctx.output.write_data(&result, None).map_err(io_err)
         }
-        ClobSubcommand::CancelMarketOrders { market, asset_id, sig_type } => {
+        ClobSubcommand::CancelMarketOrders {
+            market,
+            asset_id,
+            sig_type,
+        } => {
             if ctx.dry_run {
                 DryRunPreview::new("pm", "clob cancel-market-orders")
                     .param("market", market.as_deref().unwrap_or("all"))
@@ -1091,7 +1171,11 @@ pub async fn run(sub: ClobSubcommand, ctx: &Ctx) -> Result<(), HeatError> {
             };
             ctx.output.write_data(&result, None).map_err(io_err)
         }
-        ClobSubcommand::BalanceAllowance { asset_type, token_id, sig_type } => {
+        ClobSubcommand::BalanceAllowance {
+            asset_type,
+            token_id,
+            sig_type,
+        } => {
             let at = match asset_type.to_lowercase().as_str() {
                 "collateral" => clob::types::AssetType::Collateral,
                 "conditional" => clob::types::AssetType::Conditional,
@@ -1115,7 +1199,9 @@ pub async fn run(sub: ClobSubcommand, ctx: &Ctx) -> Result<(), HeatError> {
             };
             match ctx.output.format {
                 OutputFormat::Pretty => println!("Balance: {}", info.balance),
-                _ => { ctx.output.write_data(&info, None).map_err(io_err)?; }
+                _ => {
+                    ctx.output.write_data(&info, None).map_err(io_err)?;
+                }
             }
             Ok(())
         }
@@ -1143,10 +1229,12 @@ pub async fn run(sub: ClobSubcommand, ctx: &Ctx) -> Result<(), HeatError> {
             let notifs = client.notifications().await.map_err(clob_err)?;
             let infos: Vec<serde_json::Value> = notifs
                 .iter()
-                .map(|n| serde_json::json!({
-                    "type": n.r#type,
-                    "payload_event": n.payload.event_slug,
-                }))
+                .map(|n| {
+                    serde_json::json!({
+                        "type": n.r#type,
+                        "payload_event": n.payload.event_slug,
+                    })
+                })
                 .collect();
             ctx.output.write_data(&infos, None).map_err(io_err)
         }
@@ -1175,9 +1263,12 @@ pub async fn run(sub: ClobSubcommand, ctx: &Ctx) -> Result<(), HeatError> {
                 .create_or_derive_api_key(&signer, None)
                 .await
                 .map_err(clob_err)?;
-            write_json(ctx, serde_json::json!({
-                "key": creds.key().to_string(),
-            }))
+            write_json(
+                ctx,
+                serde_json::json!({
+                    "key": creds.key().to_string(),
+                }),
+            )
         }
         ClobSubcommand::DeleteApiKey { sig_type } => {
             if ctx.dry_run {
@@ -1191,11 +1282,20 @@ pub async fn run(sub: ClobSubcommand, ctx: &Ctx) -> Result<(), HeatError> {
         }
 
         // ── Rewards ──────────────────────────────────────────────────
-        ClobSubcommand::Earnings { date, cursor, sig_type } => {
+        ClobSubcommand::Earnings {
+            date,
+            cursor,
+            sig_type,
+        } => {
             let d = parse_date(&date)?;
             let client = auth::authenticated_clob_client(ctx, sig_type.as_deref()).await?;
-            let resp = client.earnings_for_user_for_day(d, cursor).await.map_err(clob_err)?;
-            let earnings: Vec<EarningEntry> = resp.data.iter()
+            let resp = client
+                .earnings_for_user_for_day(d, cursor)
+                .await
+                .map_err(clob_err)?;
+            let earnings: Vec<EarningEntry> = resp
+                .data
+                .iter()
                 .map(|e| EarningEntry {
                     date: e.date.to_string(),
                     condition_id: format!("{}", e.condition_id),
@@ -1214,8 +1314,12 @@ pub async fn run(sub: ClobSubcommand, ctx: &Ctx) -> Result<(), HeatError> {
         ClobSubcommand::TotalEarnings { date, sig_type } => {
             let d = parse_date(&date)?;
             let client = auth::authenticated_clob_client(ctx, sig_type.as_deref()).await?;
-            let resp = client.total_earnings_for_user_for_day(d).await.map_err(clob_err)?;
-            let earnings: Vec<TotalEarningEntry> = resp.iter()
+            let resp = client
+                .total_earnings_for_user_for_day(d)
+                .await
+                .map_err(clob_err)?;
+            let earnings: Vec<TotalEarningEntry> = resp
+                .iter()
                 .map(|e| TotalEarningEntry {
                     date: e.date.to_string(),
                     asset_address: format!("{}", e.asset_address),
@@ -1239,9 +1343,13 @@ pub async fn run(sub: ClobSubcommand, ctx: &Ctx) -> Result<(), HeatError> {
         ClobSubcommand::CurrentRewards { cursor, sig_type } => {
             let client = auth::authenticated_clob_client(ctx, sig_type.as_deref()).await?;
             let resp = client.current_rewards(cursor).await.map_err(clob_err)?;
-            let rewards: Vec<CurrentRewardEntry> = resp.data.iter()
+            let rewards: Vec<CurrentRewardEntry> = resp
+                .data
+                .iter()
                 .map(|r| {
-                    let config: Vec<RewardsConfigInfo> = r.rewards_config.iter()
+                    let config: Vec<RewardsConfigInfo> = r
+                        .rewards_config
+                        .iter()
                         .map(|c| RewardsConfigInfo {
                             asset_address: format!("{}", c.asset_address),
                             start_date: c.start_date.to_string(),
@@ -1264,15 +1372,23 @@ pub async fn run(sub: ClobSubcommand, ctx: &Ctx) -> Result<(), HeatError> {
             };
             ctx.output.write_data(&page, None).map_err(io_err)
         }
-        ClobSubcommand::RawRewards { condition_id, cursor, sig_type } => {
+        ClobSubcommand::RawRewards {
+            condition_id,
+            cursor,
+            sig_type,
+        } => {
             let client = auth::authenticated_clob_client(ctx, sig_type.as_deref()).await?;
             let resp = client
                 .raw_rewards_for_market(&condition_id, cursor)
                 .await
                 .map_err(clob_err)?;
-            let rewards: Vec<RawRewardEntry> = resp.data.iter()
+            let rewards: Vec<RawRewardEntry> = resp
+                .data
+                .iter()
                 .map(|r| {
-                    let config: Vec<MarketRewardsConfigInfo> = r.rewards_config.iter()
+                    let config: Vec<MarketRewardsConfigInfo> = r
+                        .rewards_config
+                        .iter()
                         .map(|c| MarketRewardsConfigInfo {
                             id: c.id.clone(),
                             asset_address: format!("{}", c.asset_address),
@@ -1304,7 +1420,10 @@ pub async fn run(sub: ClobSubcommand, ctx: &Ctx) -> Result<(), HeatError> {
             let resp = client.is_order_scoring(&order_id).await.map_err(clob_err)?;
             write_json(ctx, serde_json::json!({ "scoring": resp.scoring }))
         }
-        ClobSubcommand::AreOrdersScoring { order_ids, sig_type } => {
+        ClobSubcommand::AreOrdersScoring {
+            order_ids,
+            sig_type,
+        } => {
             let client = auth::authenticated_clob_client(ctx, sig_type.as_deref()).await?;
             let ids: Vec<&str> = order_ids.split(',').map(|s| s.trim()).collect();
             let resp = client.are_orders_scoring(&ids).await.map_err(clob_err)?;
@@ -1328,9 +1447,12 @@ pub async fn run(sub: ClobSubcommand, ctx: &Ctx) -> Result<(), HeatError> {
                 .user_earnings_and_markets_config(&req, None)
                 .await
                 .map_err(clob_err)?;
-            let entries: Vec<UserEarningsConfigEntry> = resp.iter()
+            let entries: Vec<UserEarningsConfigEntry> = resp
+                .iter()
                 .map(|r| {
-                    let tokens: Vec<TokenInfo> = r.tokens.iter()
+                    let tokens: Vec<TokenInfo> = r
+                        .tokens
+                        .iter()
                         .map(|t| TokenInfo {
                             token_id: t.token_id.to_string(),
                             outcome: t.outcome.clone(),
@@ -1377,13 +1499,21 @@ mod tests {
         let json = serde_json::to_value(&dto).expect("serialization must succeed");
 
         // Amount fields must be strings, not floats, to preserve precision.
-        assert!(json["making_amount"].is_string(), "making_amount must be a string");
-        assert!(json["taking_amount"].is_string(), "taking_amount must be a string");
+        assert!(
+            json["making_amount"].is_string(),
+            "making_amount must be a string"
+        );
+        assert!(
+            json["taking_amount"].is_string(),
+            "taking_amount must be a string"
+        );
         assert!(json["success"].is_boolean(), "success must be a bool");
 
         // Optional error field must be absent when None (skip_serializing_if).
-        assert!(json.get("error").is_none() || json["error"].is_null(),
-            "error must be absent or null when None");
+        assert!(
+            json.get("error").is_none() || json["error"].is_null(),
+            "error must be absent or null when None"
+        );
     }
 
     #[test]
@@ -1398,7 +1528,10 @@ mod tests {
         };
 
         let json = serde_json::to_value(&dto).unwrap();
-        assert!(json["error"].is_string(), "error must be present as string when Some");
+        assert!(
+            json["error"].is_string(),
+            "error must be present as string when Some"
+        );
         assert_eq!(json["error"].as_str().unwrap(), "insufficient balance");
     }
 
@@ -1411,7 +1544,10 @@ mod tests {
         };
 
         let json = serde_json::to_value(&dto).unwrap();
-        assert!(json["balance"].is_string(), "balance must serialize as string, not number");
+        assert!(
+            json["balance"].is_string(),
+            "balance must serialize as string, not number"
+        );
         assert_eq!(json["balance"].as_str().unwrap(), "9999.99");
     }
 
@@ -1434,12 +1570,14 @@ mod tests {
         let dto = BookInfo {
             market: "0xabc".to_string(),
             asset_id: "0x1".to_string(),
-            bids: vec![
-                BookLevel { price: "0.60".to_string(), size: "100".to_string() },
-            ],
-            asks: vec![
-                BookLevel { price: "0.65".to_string(), size: "200".to_string() },
-            ],
+            bids: vec![BookLevel {
+                price: "0.60".to_string(),
+                size: "100".to_string(),
+            }],
+            asks: vec![BookLevel {
+                price: "0.65".to_string(),
+                size: "200".to_string(),
+            }],
             min_order_size: "5".to_string(),
             tick_size: "0.01".to_string(),
             neg_risk: false,
@@ -1451,7 +1589,10 @@ mod tests {
         assert!(json["asks"].is_array(), "asks must be a JSON array");
         assert_eq!(json["bids"].as_array().unwrap().len(), 1);
         assert!(json["neg_risk"].is_boolean(), "neg_risk must be a bool");
-        assert!(json["last_trade_price"].is_string(), "last_trade_price must be string when Some");
+        assert!(
+            json["last_trade_price"].is_string(),
+            "last_trade_price must be string when Some"
+        );
     }
 
     #[test]
@@ -1486,7 +1627,10 @@ mod tests {
 
         let json = serde_json::to_value(&dto).unwrap();
         assert!(json["canceled"].is_array(), "canceled must be an array");
-        assert!(json["not_canceled"].is_array(), "not_canceled must be an array");
+        assert!(
+            json["not_canceled"].is_array(),
+            "not_canceled must be an array"
+        );
         assert_eq!(json["canceled"].as_array().unwrap().len(), 2);
         assert_eq!(json["not_canceled"].as_array().unwrap().len(), 1);
     }
@@ -1509,7 +1653,10 @@ mod tests {
         let json = serde_json::to_value(&dto).unwrap();
         assert!(json["side"].is_string(), "side must be string");
         assert!(json["size"].is_string(), "size must be string, not number");
-        assert!(json["price"].is_string(), "price must be string, not number");
+        assert!(
+            json["price"].is_string(),
+            "price must be string, not number"
+        );
 
         // Verify side is lowercase (not Debug-formatted).
         assert_eq!(json["side"].as_str().unwrap(), "buy");

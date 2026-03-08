@@ -138,12 +138,10 @@ pub async fn update_leverage<S: SignerSync>(
 
     let url = format!("{}/exchange", base_url.trim_end_matches('/'));
     let client = reqwest::Client::new();
-    let resp = client
-        .post(&url)
-        .json(&request)
-        .send()
-        .await
-        .map_err(|e| HeatError::network("exchange_post", format!("POST /exchange failed: {e}")))?;
+    let resp =
+        client.post(&url).json(&request).send().await.map_err(|e| {
+            HeatError::network("exchange_post", format!("POST /exchange failed: {e}"))
+        })?;
 
     let body: ExchangeResponse = resp.json().await.map_err(|e| {
         HeatError::network(

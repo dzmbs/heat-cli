@@ -5,14 +5,13 @@ use heat_core::ctx::Ctx;
 use heat_core::error::HeatError;
 use heat_core::output::OutputFormat;
 use polymarket_client_sdk::gamma;
-use polymarket_client_sdk::gamma::types::{ParentEntityType};
+use polymarket_client_sdk::gamma::types::ParentEntityType;
 use polymarket_client_sdk::gamma::types::request::{
-    CommentsByIdRequest, CommentsByUserAddressRequest, CommentsRequest,
-    EventByIdRequest, EventBySlugRequest, EventTagsRequest, EventsRequest,
-    MarketByIdRequest, MarketBySlugRequest, MarketTagsRequest, MarketsRequest,
-    PublicProfileRequest, RelatedTagsByIdRequest, RelatedTagsBySlugRequest,
-    SearchRequest, SeriesByIdRequest, SeriesListRequest,
-    TagByIdRequest, TagBySlugRequest, TagsRequest, TeamsRequest,
+    CommentsByIdRequest, CommentsByUserAddressRequest, CommentsRequest, EventByIdRequest,
+    EventBySlugRequest, EventTagsRequest, EventsRequest, MarketByIdRequest, MarketBySlugRequest,
+    MarketTagsRequest, MarketsRequest, PublicProfileRequest, RelatedTagsByIdRequest,
+    RelatedTagsBySlugRequest, SearchRequest, SeriesByIdRequest, SeriesListRequest, TagByIdRequest,
+    TagBySlugRequest, TagsRequest, TeamsRequest,
 };
 use polymarket_client_sdk::types::Address;
 
@@ -72,7 +71,11 @@ pub enum MarketsSubcommand {
 pub async fn markets(sub: MarketsSubcommand, ctx: &Ctx) -> Result<(), HeatError> {
     let client = gamma_client();
     match sub {
-        MarketsSubcommand::List { limit, offset, closed } => {
+        MarketsSubcommand::List {
+            limit,
+            offset,
+            closed,
+        } => {
             let req = MarketsRequest::builder()
                 .limit(limit)
                 .maybe_offset(offset)
@@ -82,9 +85,11 @@ pub async fn markets(sub: MarketsSubcommand, ctx: &Ctx) -> Result<(), HeatError>
             match ctx.output.format {
                 OutputFormat::Pretty => {
                     for m in &markets {
-                        println!("{:<12} {}",
+                        println!(
+                            "{:<12} {}",
                             m.condition_id.map(|c| format!("{c}")).unwrap_or_default(),
-                            m.question.as_deref().unwrap_or(""));
+                            m.question.as_deref().unwrap_or("")
+                        );
                     }
                 }
                 OutputFormat::Json | OutputFormat::Ndjson => {
@@ -106,7 +111,13 @@ pub async fn markets(sub: MarketsSubcommand, ctx: &Ctx) -> Result<(), HeatError>
             match ctx.output.format {
                 OutputFormat::Pretty => {
                     println!("Question:     {}", result.question.as_deref().unwrap_or(""));
-                    println!("Condition ID: {}", result.condition_id.map(|c| format!("{c}")).unwrap_or_default());
+                    println!(
+                        "Condition ID: {}",
+                        result
+                            .condition_id
+                            .map(|c| format!("{c}"))
+                            .unwrap_or_default()
+                    );
                     println!("Active:       {}", result.active.unwrap_or(false));
                     println!("Closed:       {}", result.closed.unwrap_or(false));
                     if let Some(desc) = &result.description {
@@ -152,19 +163,20 @@ pub enum EventsSubcommand {
         closed: Option<bool>,
     },
     /// Get event by ID or slug
-    Get {
-        id: String,
-    },
+    Get { id: String },
     /// Get tags for an event
-    Tags {
-        id: String,
-    },
+    Tags { id: String },
 }
 
 pub async fn events(sub: EventsSubcommand, ctx: &Ctx) -> Result<(), HeatError> {
     let client = gamma_client();
     match sub {
-        EventsSubcommand::List { limit, offset, active, closed } => {
+        EventsSubcommand::List {
+            limit,
+            offset,
+            active,
+            closed,
+        } => {
             let req = EventsRequest::builder()
                 .limit(limit)
                 .maybe_offset(offset)
@@ -215,9 +227,7 @@ pub enum TagsSubcommand {
         offset: Option<i32>,
     },
     /// Get tag by ID or slug
-    Get {
-        id: String,
-    },
+    Get { id: String },
     /// Get related tags
     Related {
         /// Tag ID or slug
@@ -279,13 +289,19 @@ pub async fn tags(sub: TagsSubcommand, ctx: &Ctx) -> Result<(), HeatError> {
                     .id(&id)
                     .maybe_omit_empty(if omit_empty { Some(true) } else { None })
                     .build();
-                client.tags_related_to_tag_by_id(&req).await.map_err(gamma_err)?
+                client
+                    .tags_related_to_tag_by_id(&req)
+                    .await
+                    .map_err(gamma_err)?
             } else {
                 let req = RelatedTagsBySlugRequest::builder()
                     .slug(&id)
                     .maybe_omit_empty(if omit_empty { Some(true) } else { None })
                     .build();
-                client.tags_related_to_tag_by_slug(&req).await.map_err(gamma_err)?
+                client
+                    .tags_related_to_tag_by_slug(&req)
+                    .await
+                    .map_err(gamma_err)?
             };
             ctx.output.write_data(&result, None).map_err(io_err)
         }
@@ -299,9 +315,7 @@ pub enum SeriesSubcommand {
     /// List series
     List,
     /// Get series by ID
-    Get {
-        id: String,
-    },
+    Get { id: String },
 }
 
 pub async fn series(sub: SeriesSubcommand, ctx: &Ctx) -> Result<(), HeatError> {
@@ -334,19 +348,18 @@ pub enum CommentsSubcommand {
         entity_id: String,
     },
     /// Get comment by ID
-    Get {
-        id: String,
-    },
+    Get { id: String },
     /// Get comments by user address
-    ByUser {
-        address: String,
-    },
+    ByUser { address: String },
 }
 
 pub async fn comments(sub: CommentsSubcommand, ctx: &Ctx) -> Result<(), HeatError> {
     let client = gamma_client();
     match sub {
-        CommentsSubcommand::List { entity_type, entity_id } => {
+        CommentsSubcommand::List {
+            entity_type,
+            entity_id,
+        } => {
             let parent_type = match entity_type.to_lowercase().as_str() {
                 "event" => ParentEntityType::Event,
                 "series" => ParentEntityType::Series,
@@ -370,7 +383,10 @@ pub async fn comments(sub: CommentsSubcommand, ctx: &Ctx) -> Result<(), HeatErro
             let req = CommentsByUserAddressRequest::builder()
                 .user_address(addr)
                 .build();
-            let comments = client.comments_by_user_address(&req).await.map_err(gamma_err)?;
+            let comments = client
+                .comments_by_user_address(&req)
+                .await
+                .map_err(gamma_err)?;
             ctx.output.write_data(&comments, None).map_err(io_err)
         }
     }
@@ -392,9 +408,7 @@ pub async fn profiles(sub: ProfilesSubcommand, ctx: &Ctx) -> Result<(), HeatErro
     match sub {
         ProfilesSubcommand::Get { address } => {
             let addr = parse_address(&address)?;
-            let req = PublicProfileRequest::builder()
-                .address(addr)
-                .build();
+            let req = PublicProfileRequest::builder().address(addr).build();
             let profile = client.public_profile(&req).await.map_err(gamma_err)?;
             ctx.output.write_data(&profile, None).map_err(io_err)
         }

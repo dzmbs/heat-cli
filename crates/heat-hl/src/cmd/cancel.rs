@@ -31,11 +31,10 @@ struct CancelResult {
 
 pub async fn run(args: CancelArgs, ctx: &Ctx) -> Result<(), HeatError> {
     if !args.all && args.oid.is_none() {
-        return Err(HeatError::validation(
-            "cancel_target",
-            "Must specify --oid or --all",
-        )
-        .with_hint("heat hl cancel BTC --oid 12345  or  heat hl cancel --all"));
+        return Err(
+            HeatError::validation("cancel_target", "Must specify --oid or --all")
+                .with_hint("heat hl cancel BTC --oid 12345  or  heat hl cancel --all"),
+        );
     }
 
     let client = client_from_ctx(ctx)?;
@@ -108,14 +107,16 @@ pub async fn run(args: CancelArgs, ctx: &Ctx) -> Result<(), HeatError> {
         let perps = client.perps().await.map_err(|e| {
             HeatError::network("perps_fetch", format!("Failed to fetch perps: {e}"))
         })?;
-        let spots = client.spot().await.map_err(|e| {
-            HeatError::network("spot_fetch", format!("Failed to fetch spots: {e}"))
-        })?;
+        let spots = client
+            .spot()
+            .await
+            .map_err(|e| HeatError::network("spot_fetch", format!("Failed to fetch spots: {e}")))?;
         // Also fetch HIP-3 DEX perps (best-effort, warn on failure)
         let dexes = match client.perp_dexs().await {
             Ok(d) => d,
             Err(e) => {
-                ctx.output.diagnostic(&format!("Warning: failed to fetch DEX list: {e}"));
+                ctx.output
+                    .diagnostic(&format!("Warning: failed to fetch DEX list: {e}"));
                 vec![]
             }
         };
@@ -156,7 +157,10 @@ pub async fn run(args: CancelArgs, ctx: &Ctx) -> Result<(), HeatError> {
         let mut resolved_cancels: Vec<Cancel> = Vec::new();
         for o in &to_cancel {
             if let Some(idx) = coin_to_index(&o.coin) {
-                resolved_cancels.push(Cancel { asset: idx, oid: o.oid });
+                resolved_cancels.push(Cancel {
+                    asset: idx,
+                    oid: o.oid,
+                });
             } else {
                 skipped.push(format!("{} (oid {})", o.coin, o.oid));
             }
@@ -171,7 +175,8 @@ pub async fn run(args: CancelArgs, ctx: &Ctx) -> Result<(), HeatError> {
         }
 
         if resolved_cancels.is_empty() {
-            ctx.output.diagnostic("No orders could be resolved for cancellation.");
+            ctx.output
+                .diagnostic("No orders could be resolved for cancellation.");
             return Ok(());
         }
 
@@ -179,7 +184,9 @@ pub async fn run(args: CancelArgs, ctx: &Ctx) -> Result<(), HeatError> {
         let mut total_cancelled = 0;
         for chunk in resolved_cancels.chunks(64) {
             let nonce = nonce_now();
-            let batch = BatchCancel { cancels: chunk.to_vec() };
+            let batch = BatchCancel {
+                cancels: chunk.to_vec(),
+            };
             client
                 .cancel(&s, batch, nonce, None, None)
                 .await

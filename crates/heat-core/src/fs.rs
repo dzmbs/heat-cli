@@ -28,7 +28,11 @@ pub fn atomic_write(path: &Path, data: &[u8]) -> Result<(), HeatError> {
         let _ = std::fs::remove_file(&tmp);
         HeatError::internal(
             "rename_failed",
-            format!("Failed to rename {} -> {}: {e}", tmp.display(), path.display()),
+            format!(
+                "Failed to rename {} -> {}: {e}",
+                tmp.display(),
+                path.display()
+            ),
         )
     })
 }
@@ -52,10 +56,7 @@ pub fn atomic_write_secure(path: &Path, data: &[u8]) -> Result<(), HeatError> {
 
 /// Generate a sibling temp path: /dir/foo.toml -> /dir/.foo.toml.heat-tmp
 fn sibling_tmp(path: &Path) -> std::path::PathBuf {
-    let file_name = path
-        .file_name()
-        .and_then(|f| f.to_str())
-        .unwrap_or("temp");
+    let file_name = path.file_name().and_then(|f| f.to_str()).unwrap_or("temp");
     let parent = path.parent().unwrap_or(Path::new("."));
     parent.join(format!(".{file_name}.heat-tmp"))
 }

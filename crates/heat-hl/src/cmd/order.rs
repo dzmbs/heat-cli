@@ -51,11 +51,29 @@ pub struct SellArgs {
 }
 
 pub async fn buy(args: BuyArgs, ctx: &Ctx) -> Result<(), HeatError> {
-    place_order(ctx, &args.asset, &args.size, args.price.as_deref(), &args.tif, args.reduce_only, true).await
+    place_order(
+        ctx,
+        &args.asset,
+        &args.size,
+        args.price.as_deref(),
+        &args.tif,
+        args.reduce_only,
+        true,
+    )
+    .await
 }
 
 pub async fn sell(args: SellArgs, ctx: &Ctx) -> Result<(), HeatError> {
-    place_order(ctx, &args.asset, &args.size, args.price.as_deref(), &args.tif, args.reduce_only, false).await
+    place_order(
+        ctx,
+        &args.asset,
+        &args.size,
+        args.price.as_deref(),
+        &args.tif,
+        args.reduce_only,
+        false,
+    )
+    .await
 }
 
 #[derive(Serialize)]
@@ -81,11 +99,13 @@ async fn place_order(
     let client = client_from_ctx(ctx)?;
     let resolved = asset::resolve(&client, asset_name).await?;
 
-    let raw_size = Decimal::from_str(size_str).map_err(|_| {
-        HeatError::validation("invalid_size", format!("Invalid size: {size_str}"))
-    })?;
+    let raw_size = Decimal::from_str(size_str)
+        .map_err(|_| HeatError::validation("invalid_size", format!("Invalid size: {size_str}")))?;
     if raw_size <= Decimal::ZERO {
-        return Err(HeatError::validation("non_positive_size", "Size must be positive"));
+        return Err(HeatError::validation(
+            "non_positive_size",
+            "Size must be positive",
+        ));
     }
     let size = truncate_size(raw_size, resolved.sz_decimals);
 
@@ -116,7 +136,12 @@ async fn place_order(
             mid * (Decimal::ONE - slippage)
         };
         let rounded = round_price(&client, &resolved, slippage_px).await?;
-        (rounded, OrderTypePlacement::Limit { tif: TimeInForce::FrontendMarket })
+        (
+            rounded,
+            OrderTypePlacement::Limit {
+                tif: TimeInForce::FrontendMarket,
+            },
+        )
     };
 
     // Min notional preflight ($10)
@@ -144,7 +169,10 @@ async fn place_order(
         return Ok(());
     }
 
-    ctx.confirm_dangerous(&format!("{side_str} {} {} @ {}", size, resolved.name, limit_px))?;
+    ctx.confirm_dangerous(&format!(
+        "{side_str} {} {} @ {}",
+        size, resolved.name, limit_px
+    ))?;
 
     let s = signer::resolve_signer(ctx)?;
     let nonce = SystemTime::now()
@@ -171,9 +199,9 @@ async fn place_order(
         .await
         .map_err(|e| HeatError::protocol("order_failed", format!("Order placement failed: {e}")))?;
 
-    let resp = responses.first().ok_or_else(|| {
-        HeatError::protocol("order_failed", "No response from exchange")
-    })?;
+    let resp = responses
+        .first()
+        .ok_or_else(|| HeatError::protocol("order_failed", "No response from exchange"))?;
 
     // Fail on rejected orders
     if let Some(err_msg) = resp.error() {
@@ -198,9 +226,15 @@ async fn place_order(
         }
         OutputFormat::Pretty => {
             if let Some(oid) = result.oid {
-                println!("{} {} {} @ {} — oid: {oid}", side_str, result.size, result.asset, result.price);
+                println!(
+                    "{} {} {} @ {} — oid: {oid}",
+                    side_str, result.size, result.asset, result.price
+                );
             } else {
-                println!("{} {} {} @ {} — {}", side_str, result.size, result.asset, result.price, result.status);
+                println!(
+                    "{} {} {} @ {} — {}",
+                    side_str, result.size, result.asset, result.price, result.status
+                );
             }
         }
         OutputFormat::Quiet => {
@@ -230,13 +264,17 @@ async fn round_price(
     resolved: &asset::ResolvedAsset,
     price: Decimal,
 ) -> Result<Decimal, HeatError> {
-    let perps: Vec<PerpMarket> = client.perps().await.map_err(|e| {
-        HeatError::network("perps_fetch", format!("Failed to fetch perps: {e}"))
-    })?;
+    let perps: Vec<PerpMarket> = client
+        .perps()
+        .await
+        .map_err(|e| HeatError::network("perps_fetch", format!("Failed to fetch perps: {e}")))?;
     for p in &perps {
         if p.index == resolved.index {
             return p.round_price(price).ok_or_else(|| {
-                HeatError::validation("tick_round", format!("Cannot round price {price} to valid tick"))
+                HeatError::validation(
+                    "tick_round",
+                    format!("Cannot round price {price} to valid tick"),
+                )
             });
         }
     }

@@ -8,33 +8,30 @@ use std::io::{self, Write};
 /// - Non-TTY without `--yes`: fails. Agents must opt in explicitly.
 ///   This is stricter than some CLIs, but correct for real-money actions.
 /// - TTY without `--yes`: prompts interactively.
-pub fn confirm_dangerous(
-    action: &str,
-    yes: bool,
-    is_tty: bool,
-) -> Result<(), HeatError> {
+pub fn confirm_dangerous(action: &str, yes: bool, is_tty: bool) -> Result<(), HeatError> {
     if yes {
         return Ok(());
     }
     if !is_tty {
-        return Err(
-            HeatError::validation(
-                "confirmation_required",
-                format!("Dangerous action requires confirmation: {action}"),
-            )
-            .with_hint("Use --yes to confirm in non-interactive mode"),
-        );
+        return Err(HeatError::validation(
+            "confirmation_required",
+            format!("Dangerous action requires confirmation: {action}"),
+        )
+        .with_hint("Use --yes to confirm in non-interactive mode"));
     }
     eprint!("Confirm {action}? [y/N] ");
     io::stderr().flush().ok();
     let mut input = String::new();
-    io::stdin().read_line(&mut input).map_err(|e| {
-        HeatError::internal("stdin_read", format!("Failed to read input: {e}"))
-    })?;
+    io::stdin()
+        .read_line(&mut input)
+        .map_err(|e| HeatError::internal("stdin_read", format!("Failed to read input: {e}")))?;
     if input.trim().eq_ignore_ascii_case("y") {
         Ok(())
     } else {
-        Err(HeatError::validation("cancelled", "Action cancelled by user"))
+        Err(HeatError::validation(
+            "cancelled",
+            "Action cancelled by user",
+        ))
     }
 }
 

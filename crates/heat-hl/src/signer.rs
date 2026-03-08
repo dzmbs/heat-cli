@@ -20,7 +20,10 @@ pub fn resolve_signer(ctx: &Ctx) -> Result<PrivateKeySigner, HeatError> {
     let key_bytes = keystore::load_key(&account.key_name, password.as_bytes())?;
 
     let signer = PrivateKeySigner::from_slice(&key_bytes).map_err(|e| {
-        HeatError::auth("invalid_key", format!("Failed to create signer from key: {e}"))
+        HeatError::auth(
+            "invalid_key",
+            format!("Failed to create signer from key: {e}"),
+        )
     })?;
 
     Ok(signer)

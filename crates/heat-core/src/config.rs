@@ -20,11 +20,10 @@ pub struct HeatConfig {
 impl HeatConfig {
     /// Heat home directory: ~/.heat/
     pub fn home_dir() -> Result<PathBuf, HeatError> {
-        let home = std::env::var("HOME").or_else(|_| std::env::var("USERPROFILE")).map_err(|_| {
-            HeatError::internal("no_home_dir", "Cannot determine home directory")
-        })?;
-        let heat_home =
-            std::env::var("HEAT_HOME").unwrap_or_else(|_| format!("{home}/.heat"));
+        let home = std::env::var("HOME")
+            .or_else(|_| std::env::var("USERPROFILE"))
+            .map_err(|_| HeatError::internal("no_home_dir", "Cannot determine home directory"))?;
+        let heat_home = std::env::var("HEAT_HOME").unwrap_or_else(|_| format!("{home}/.heat"));
         Ok(PathBuf::from(heat_home))
     }
 
@@ -38,10 +37,7 @@ impl HeatConfig {
             HeatError::internal("config_read_failed", format!("Failed to read config: {e}"))
         })?;
         toml::from_str(&content).map_err(|e| {
-            HeatError::validation(
-                "config_parse_failed",
-                format!("Invalid config.toml: {e}"),
-            )
+            HeatError::validation("config_parse_failed", format!("Invalid config.toml: {e}"))
         })
     }
 

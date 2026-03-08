@@ -76,7 +76,13 @@ pub async fn run(args: PositionsArgs, ctx: &Ctx) -> Result<(), HeatError> {
                 for p in &positions {
                     println!(
                         "{:<8} {:>10} {:>12} {:>14} {:>12} {:>6} {:>12}",
-                        p.coin, p.size, p.entry_px, p.position_value, p.unrealized_pnl, p.leverage, p.liquidation_px
+                        p.coin,
+                        p.size,
+                        p.entry_px,
+                        p.position_value,
+                        p.unrealized_pnl,
+                        p.leverage,
+                        p.liquidation_px
                     );
                 }
             }

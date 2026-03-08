@@ -37,9 +37,10 @@ pub async fn run(args: OrdersArgs, ctx: &Ctx) -> Result<(), HeatError> {
         signer::resolve_address(ctx)?
     };
 
-    let open = client.open_orders(address, None).await.map_err(|e| {
-        HeatError::network("orders_fetch", format!("Failed to fetch orders: {e}"))
-    })?;
+    let open = client
+        .open_orders(address, None)
+        .await
+        .map_err(|e| HeatError::network("orders_fetch", format!("Failed to fetch orders: {e}")))?;
 
     let infos: Vec<OrderInfo> = open
         .iter()

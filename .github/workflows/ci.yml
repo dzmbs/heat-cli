@@ -19,7 +19,7 @@ jobs:
 
       - uses: dtolnay/rust-toolchain@stable
         with:
-          toolchain: "1.85"
+          toolchain: "1.91"
 
       - uses: actions/cache@v4
         with:
@@ -41,7 +41,7 @@ jobs:
 
       - uses: dtolnay/rust-toolchain@stable
         with:
-          toolchain: "1.85"
+          toolchain: "1.91"
 
       - uses: actions/cache@v4
         with:
@@ -63,7 +63,7 @@ jobs:
 
       - uses: dtolnay/rust-toolchain@stable
         with:
-          toolchain: "1.85"
+          toolchain: "1.91"
           components: clippy
 
       - uses: actions/cache@v4
@@ -86,7 +86,7 @@ jobs:
 
       - uses: dtolnay/rust-toolchain@stable
         with:
-          toolchain: "1.85"
+          toolchain: "1.91"
           components: rustfmt
 
       - run: cargo fmt --all -- --check
@@ -99,7 +99,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: "22"
           cache: npm
           cache-dependency-path: site/package-lock.json
 

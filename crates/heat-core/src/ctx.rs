@@ -24,10 +24,7 @@ impl Ctx {
     ) -> Result<Self, HeatError> {
         // Resolve account: flag > env > config > default-account file
         // Only suppress "no account configured" — propagate real errors.
-        let account_name = match accounts::resolve_account_name(
-            account_flag.as_deref(),
-            &config,
-        ) {
+        let account_name = match accounts::resolve_account_name(account_flag.as_deref(), &config) {
             Ok(name) => Some(name),
             Err(e) if e.category == ErrorCategory::Auth && e.reason == "no_account" => None,
             Err(e) => return Err(e),
@@ -51,8 +48,9 @@ impl Ctx {
     /// Get the resolved account. Errors if no account is available.
     pub fn require_account(&self) -> Result<Account, HeatError> {
         let name = self.account_name.as_deref().ok_or_else(|| {
-            HeatError::auth("no_account", "No account specified")
-                .with_hint("Use --account <NAME>, set HEAT_ACCOUNT, or run 'heat accounts use <NAME>'")
+            HeatError::auth("no_account", "No account specified").with_hint(
+                "Use --account <NAME>, set HEAT_ACCOUNT, or run 'heat accounts use <NAME>'",
+            )
         })?;
         Account::load(name)
     }

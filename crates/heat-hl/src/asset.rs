@@ -82,11 +82,10 @@ async fn resolve_spot(client: &HttpClient, input: &str) -> Result<ResolvedAsset,
         }
     }
 
-    Err(HeatError::validation(
-        "asset_not_found",
-        format!("Spot market not found: {input}"),
+    Err(
+        HeatError::validation("asset_not_found", format!("Spot market not found: {input}"))
+            .with_hint("Use 'heat hl spot' to list available spot markets"),
     )
-    .with_hint("Use 'heat hl spot' to list available spot markets"))
 }
 
 async fn resolve_hip3(client: &HttpClient, input: &str) -> Result<ResolvedAsset, HeatError> {
@@ -99,20 +98,18 @@ async fn resolve_hip3(client: &HttpClient, input: &str) -> Result<ResolvedAsset,
     }
     let (dex_name, symbol) = (parts[0], parts[1].to_uppercase());
 
-    let dexes = client.perp_dexs().await.map_err(|e| {
-        HeatError::network("dex_fetch", format!("Failed to fetch DEXes: {e}"))
-    })?;
+    let dexes = client
+        .perp_dexs()
+        .await
+        .map_err(|e| HeatError::network("dex_fetch", format!("Failed to fetch DEXes: {e}")))?;
 
     let dex = dexes
         .iter()
         .find(|d| d.name().eq_ignore_ascii_case(dex_name))
         .ok_or_else(|| {
             let names: Vec<&str> = dexes.iter().map(|d| d.name()).collect();
-            HeatError::validation(
-                "dex_not_found",
-                format!("DEX not found: {dex_name}"),
-            )
-            .with_hint(suggest_similar(dex_name, &names))
+            HeatError::validation("dex_not_found", format!("DEX not found: {dex_name}"))
+                .with_hint(suggest_similar(dex_name, &names))
         })?;
 
     let perps = client.perps_from(dex.clone()).await.map_err(|e| {
@@ -150,9 +147,10 @@ async fn resolve_by_index(client: &HttpClient, idx: usize) -> Result<ResolvedAss
             }
         }
     } else {
-        let spots = client.spot().await.map_err(|e| {
-            HeatError::network("spot_fetch", format!("Failed to fetch spots: {e}"))
-        })?;
+        let spots = client
+            .spot()
+            .await
+            .map_err(|e| HeatError::network("spot_fetch", format!("Failed to fetch spots: {e}")))?;
         for s in &spots {
             if s.index == idx {
                 return Ok(ResolvedAsset {
@@ -231,13 +229,19 @@ mod tests {
     fn suggest_similar_finds_close_matches() {
         let candidates = ["BTC", "ETH", "SOL", "DOGE"];
         let result = suggest_similar("btcc", &candidates);
-        assert!(result.contains("BTC"), "Expected BTC suggestion, got: {result}");
+        assert!(
+            result.contains("BTC"),
+            "Expected BTC suggestion, got: {result}"
+        );
     }
 
     #[test]
     fn suggest_similar_no_match() {
         let candidates = ["BTC", "ETH"];
         let result = suggest_similar("XXXXXXXX", &candidates);
-        assert!(result.contains("heat hl"), "Expected fallback hint, got: {result}");
+        assert!(
+            result.contains("heat hl"),
+            "Expected fallback hint, got: {result}"
+        );
     }
 }

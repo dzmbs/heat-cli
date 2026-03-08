@@ -90,7 +90,13 @@ pub fn run(cmd: AccountsCmd, ctx: &Ctx) -> Result<(), HeatError> {
             key,
             password_file,
             password_env,
-        } => create(&name, &key, password_file.as_deref(), password_env.as_deref(), ctx),
+        } => create(
+            &name,
+            &key,
+            password_file.as_deref(),
+            password_env.as_deref(),
+            ctx,
+        ),
         AccountsSubcommand::Import { name, keystore } => import(&name, &keystore, ctx),
         AccountsSubcommand::Use { name } => use_account(&name, ctx),
         AccountsSubcommand::Remove { name } => remove(&name, ctx),
@@ -101,9 +107,12 @@ fn list(ctx: &Ctx) -> Result<(), HeatError> {
     let names = Account::list()?;
     if names.is_empty() {
         if ctx.output.format == OutputFormat::Json {
-            ctx.output.write_data(&Vec::<AccountInfo>::new(), None).map_err(io_err)?;
+            ctx.output
+                .write_data(&Vec::<AccountInfo>::new(), None)
+                .map_err(io_err)?;
         } else {
-            ctx.output.diagnostic("No accounts. Use 'heat accounts create' to create one.");
+            ctx.output
+                .diagnostic("No accounts. Use 'heat accounts create' to create one.");
         }
         return Ok(());
     }
@@ -164,9 +173,8 @@ fn create(
     preflight_name(name)?;
 
     let hex_str = key_hex.strip_prefix("0x").unwrap_or(key_hex);
-    let key_bytes = hex::decode(hex_str).map_err(|_| {
-        HeatError::validation("invalid_key", "Private key must be valid hex")
-    })?;
+    let key_bytes = hex::decode(hex_str)
+        .map_err(|_| HeatError::validation("invalid_key", "Private key must be valid hex"))?;
     if key_bytes.len() != 32 {
         return Err(HeatError::validation(
             "invalid_key_length",
@@ -174,11 +182,10 @@ fn create(
         ));
     }
 
-    let password = keystore::resolve_password(password_file, password_env)?
-        .ok_or_else(|| {
-            HeatError::auth("no_password", "Password required for key encryption")
-                .with_hint("Use --password-file, --password-env, or set HEAT_PASSWORD")
-        })?;
+    let password = keystore::resolve_password(password_file, password_env)?.ok_or_else(|| {
+        HeatError::auth("no_password", "Password required for key encryption")
+            .with_hint("Use --password-file, --password-env, or set HEAT_PASSWORD")
+    })?;
 
     // Derive address from private key before encrypting
     let address = keystore::derive_evm_address(&key_bytes)?;
@@ -215,15 +222,15 @@ fn import(name: &str, keystore_path: &str, ctx: &Ctx) -> Result<(), HeatError> {
             format!("Failed to read keystore file: {e}"),
         )
     })?;
-    let parsed: heat_core::keystore::KeystoreFile = serde_json::from_str(&content).map_err(|e| {
-        HeatError::validation(
-            "keystore_parse",
-            format!("Invalid V3 keystore file: {e}"),
-        )
-    })?;
+    let parsed: heat_core::keystore::KeystoreFile =
+        serde_json::from_str(&content).map_err(|e| {
+            HeatError::validation("keystore_parse", format!("Invalid V3 keystore file: {e}"))
+        })?;
 
     // Extract address from keystore if present
-    let address = parsed.address.as_deref()
+    let address = parsed
+        .address
+        .as_deref()
         .map(keystore::normalize_keystore_address)
         .transpose()?;
 
@@ -247,7 +254,8 @@ fn import(name: &str, keystore_path: &str, ctx: &Ctx) -> Result<(), HeatError> {
         let info = AccountInfo::from(&account);
         ctx.output.write_data(&info, None).map_err(io_err)?;
     } else {
-        ctx.output.diagnostic(&format!("Account '{name}' imported from {keystore_path}."));
+        ctx.output
+            .diagnostic(&format!("Account '{name}' imported from {keystore_path}."));
     }
     Ok(())
 }
@@ -259,7 +267,8 @@ fn use_account(name: &str, ctx: &Ctx) -> Result<(), HeatError> {
             .write_data(&serde_json::json!({"default_account": name}), None)
             .map_err(io_err)?;
     } else {
-        ctx.output.diagnostic(&format!("Default account set to '{name}'."));
+        ctx.output
+            .diagnostic(&format!("Default account set to '{name}'."));
     }
     Ok(())
 }
@@ -271,7 +280,9 @@ fn remove(name: &str, ctx: &Ctx) -> Result<(), HeatError> {
             .write_data(&serde_json::json!({"removed": name}), None)
             .map_err(io_err)?;
     } else {
-        ctx.output.diagnostic(&format!("Account '{name}' removed. Key file preserved in ~/.heat/keys/."));
+        ctx.output.diagnostic(&format!(
+            "Account '{name}' removed. Key file preserved in ~/.heat/keys/."
+        ));
     }
     Ok(())
 }
@@ -287,11 +298,10 @@ fn preflight_name(name: &str) -> Result<(), HeatError> {
         .with_hint("Remove the existing account first, or choose a different name"));
     }
     if keystore::key_exists(name)? {
-        return Err(HeatError::validation(
-            "key_exists",
-            format!("Key '{name}' already exists"),
-        )
-        .with_hint("Remove the existing key first, or choose a different name"));
+        return Err(
+            HeatError::validation("key_exists", format!("Key '{name}' already exists"))
+                .with_hint("Remove the existing key first, or choose a different name"),
+        );
     }
     Ok(())
 }

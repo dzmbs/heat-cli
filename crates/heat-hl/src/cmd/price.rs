@@ -20,9 +20,10 @@ struct PriceOutput {
 
 pub async fn run(args: PriceArgs, ctx: &Ctx) -> Result<(), HeatError> {
     let client = client_from_ctx(ctx)?;
-    let mids = client.all_mids(None).await.map_err(|e| {
-        HeatError::network("mids_fetch", format!("Failed to fetch prices: {e}"))
-    })?;
+    let mids = client
+        .all_mids(None)
+        .await
+        .map_err(|e| HeatError::network("mids_fetch", format!("Failed to fetch prices: {e}")))?;
 
     let upper = args.asset.to_uppercase();
     let mid = mids
@@ -44,7 +45,10 @@ pub async fn run(args: PriceArgs, ctx: &Ctx) -> Result<(), HeatError> {
     };
 
     match ctx.output.format {
-        OutputFormat::Quiet => ctx.output.write_scalar(&price.to_string()).map_err(io_err)?,
+        OutputFormat::Quiet => ctx
+            .output
+            .write_scalar(&price.to_string())
+            .map_err(io_err)?,
         OutputFormat::Json | OutputFormat::Ndjson => {
             ctx.output.write_data(&out, None).map_err(io_err)?
         }

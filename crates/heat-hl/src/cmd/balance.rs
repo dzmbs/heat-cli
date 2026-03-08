@@ -43,7 +43,9 @@ pub async fn run(args: BalanceArgs, ctx: &Ctx) -> Result<(), HeatError> {
     let state = client
         .clearinghouse_state(address, None)
         .await
-        .map_err(|e| HeatError::network("balance_fetch", format!("Failed to fetch balance: {e}")))?;
+        .map_err(|e| {
+            HeatError::network("balance_fetch", format!("Failed to fetch balance: {e}"))
+        })?;
 
     let balances_raw = client.user_balances(address).await.map_err(|e| {
         HeatError::network("balance_fetch", format!("Failed to fetch balances: {e}"))
@@ -77,9 +79,15 @@ pub async fn run(args: BalanceArgs, ctx: &Ctx) -> Result<(), HeatError> {
                 println!("No balances.");
             } else {
                 println!();
-                println!("{:<10} {:>14} {:>14} {:>14}", "COIN", "TOTAL", "AVAILABLE", "HOLD");
+                println!(
+                    "{:<10} {:>14} {:>14} {:>14}",
+                    "COIN", "TOTAL", "AVAILABLE", "HOLD"
+                );
                 for b in &out.balances {
-                    println!("{:<10} {:>14} {:>14} {:>14}", b.coin, b.total, b.available, b.hold);
+                    println!(
+                        "{:<10} {:>14} {:>14} {:>14}",
+                        b.coin, b.total, b.available, b.hold
+                    );
                 }
             }
         }

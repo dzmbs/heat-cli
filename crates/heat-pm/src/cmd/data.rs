@@ -5,17 +5,17 @@ use heat_core::ctx::Ctx;
 use heat_core::error::HeatError;
 use heat_core::output::OutputFormat;
 use polymarket_client_sdk::data;
-use polymarket_client_sdk::data::types::{ActivityType, LeaderboardOrderBy, Side, TimePeriod};
 use polymarket_client_sdk::data::types::request::{
     ActivityRequest, BuilderLeaderboardRequest, BuilderVolumeRequest, ClosedPositionsRequest,
-    HoldersRequest, LiveVolumeRequest, OpenInterestRequest, PositionsRequest,
-    TradedRequest, TraderLeaderboardRequest, TradesRequest, ValueRequest,
+    HoldersRequest, LiveVolumeRequest, OpenInterestRequest, PositionsRequest, TradedRequest,
+    TraderLeaderboardRequest, TradesRequest, ValueRequest,
 };
 use polymarket_client_sdk::data::types::response::{
-    Activity, BuilderLeaderboardEntry, BuilderVolumeEntry, ClosedPosition, Holder,
-    Market, MetaHolder, OpenInterest, Position, Trade, TraderLeaderboardEntry, Traded, Value,
-    LiveVolume, MarketVolume,
+    Activity, BuilderLeaderboardEntry, BuilderVolumeEntry, ClosedPosition, Holder, LiveVolume,
+    Market, MarketVolume, MetaHolder, OpenInterest, Position, Trade, Traded,
+    TraderLeaderboardEntry, Value,
 };
+use polymarket_client_sdk::data::types::{ActivityType, LeaderboardOrderBy, Side, TimePeriod};
 use polymarket_client_sdk::types::{Address, B256};
 use serde::Serialize;
 
@@ -37,15 +37,21 @@ fn bound_err(e: impl std::fmt::Display) -> HeatError {
 
 fn parse_address(s: &str) -> Result<Address, HeatError> {
     s.parse::<Address>().map_err(|e| {
-        HeatError::validation("invalid_address", format!("Invalid Ethereum address '{s}': {e}"))
-            .with_hint("Address must be a hex string like 0x1234...abcd")
+        HeatError::validation(
+            "invalid_address",
+            format!("Invalid Ethereum address '{s}': {e}"),
+        )
+        .with_hint("Address must be a hex string like 0x1234...abcd")
     })
 }
 
 fn parse_b256(s: &str) -> Result<B256, HeatError> {
     s.parse::<B256>().map_err(|e| {
-        HeatError::validation("invalid_condition_id", format!("Invalid condition ID '{s}': {e}"))
-            .with_hint("Condition ID must be a 32-byte hex string")
+        HeatError::validation(
+            "invalid_condition_id",
+            format!("Invalid condition ID '{s}': {e}"),
+        )
+        .with_hint("Condition ID must be a 32-byte hex string")
     })
 }
 
@@ -55,8 +61,10 @@ fn parse_time_period(s: &str) -> Result<TimePeriod, HeatError> {
         "week" | "1w" => Ok(TimePeriod::Week),
         "month" | "1m" => Ok(TimePeriod::Month),
         "all" => Ok(TimePeriod::All),
-        _ => Err(HeatError::validation("invalid_time_period", format!("Invalid time period: {s}"))
-            .with_hint("Valid periods: day, week, month, all")),
+        _ => Err(
+            HeatError::validation("invalid_time_period", format!("Invalid time period: {s}"))
+                .with_hint("Valid periods: day, week, month, all"),
+        ),
     }
 }
 
@@ -395,7 +403,11 @@ impl From<&LiveVolume> for LiveVolumeDto {
     fn from(v: &LiveVolume) -> Self {
         Self {
             total: fmt_decimal(&v.total),
-            markets: v.markets.iter().map(|mv| MarketVolumeDto::from(mv)).collect(),
+            markets: v
+                .markets
+                .iter()
+                .map(|mv| MarketVolumeDto::from(mv))
+                .collect(),
         }
     }
 }
@@ -581,18 +593,25 @@ pub async fn run(sub: DataSubcommand, ctx: &Ctx) -> Result<(), HeatError> {
     let client = data::Client::default();
 
     match sub {
-        DataSubcommand::Positions { user, limit, offset } => {
+        DataSubcommand::Positions {
+            user,
+            limit,
+            offset,
+        } => {
             let addr = resolve_user(user, ctx)?;
             let req = if let Some(o) = offset {
                 PositionsRequest::builder()
                     .user(addr)
-                    .limit(limit).map_err(bound_err)?
-                    .offset(o).map_err(bound_err)?
+                    .limit(limit)
+                    .map_err(bound_err)?
+                    .offset(o)
+                    .map_err(bound_err)?
                     .build()
             } else {
                 PositionsRequest::builder()
                     .user(addr)
-                    .limit(limit).map_err(bound_err)?
+                    .limit(limit)
+                    .map_err(bound_err)?
                     .build()
             };
             let positions = client.positions(&req).await.map_err(data_err)?;
@@ -603,15 +622,24 @@ pub async fn run(sub: DataSubcommand, ctx: &Ctx) -> Result<(), HeatError> {
                         println!("No open positions.");
                     } else {
                         for (i, (dto, raw)) in dtos.iter().zip(positions.iter()).enumerate() {
-                            if i > 0 { println!(); }
+                            if i > 0 {
+                                println!();
+                            }
                             println!("  Market : {}", raw.title);
                             println!("  Outcome: {} (index {})", dto.outcome, dto.outcome_index);
                             println!("  Size   : {}", dto.size);
                             println!("  Price  : avg {} | cur {}", dto.avg_price, dto.cur_price);
-                            println!("  Value  : {} (cost {})", dto.current_value, dto.initial_value);
+                            println!(
+                                "  Value  : {} (cost {})",
+                                dto.current_value, dto.initial_value
+                            );
                             println!("  PnL    : {} cash ({} %)", dto.cash_pnl, dto.percent_pnl);
-                            if dto.redeemable { println!("  [redeemable]"); }
-                            if dto.mergeable  { println!("  [mergeable]"); }
+                            if dto.redeemable {
+                                println!("  [redeemable]");
+                            }
+                            if dto.mergeable {
+                                println!("  [mergeable]");
+                            }
                         }
                     }
                 }
@@ -625,22 +653,30 @@ pub async fn run(sub: DataSubcommand, ctx: &Ctx) -> Result<(), HeatError> {
             Ok(())
         }
 
-        DataSubcommand::ClosedPositions { user, limit, offset } => {
+        DataSubcommand::ClosedPositions {
+            user,
+            limit,
+            offset,
+        } => {
             let addr = resolve_user(user, ctx)?;
             let req = if let Some(o) = offset {
                 ClosedPositionsRequest::builder()
                     .user(addr)
-                    .limit(limit).map_err(bound_err)?
-                    .offset(o).map_err(bound_err)?
+                    .limit(limit)
+                    .map_err(bound_err)?
+                    .offset(o)
+                    .map_err(bound_err)?
                     .build()
             } else {
                 ClosedPositionsRequest::builder()
                     .user(addr)
-                    .limit(limit).map_err(bound_err)?
+                    .limit(limit)
+                    .map_err(bound_err)?
                     .build()
             };
             let positions = client.closed_positions(&req).await.map_err(data_err)?;
-            let dtos: Vec<ClosedPositionDto> = positions.iter().map(ClosedPositionDto::from).collect();
+            let dtos: Vec<ClosedPositionDto> =
+                positions.iter().map(ClosedPositionDto::from).collect();
             match ctx.output.format {
                 OutputFormat::Pretty => {
                     if dtos.is_empty() {
@@ -648,8 +684,14 @@ pub async fn run(sub: DataSubcommand, ctx: &Ctx) -> Result<(), HeatError> {
                     } else {
                         for (dto, raw) in dtos.iter().zip(positions.iter()) {
                             println!("  Market    : {}", raw.title);
-                            println!("  Outcome   : {} (index {})", dto.outcome, dto.outcome_index);
-                            println!("  Avg price : {} | Close price: {}", dto.avg_price, dto.cur_price);
+                            println!(
+                                "  Outcome   : {} (index {})",
+                                dto.outcome, dto.outcome_index
+                            );
+                            println!(
+                                "  Avg price : {} | Close price: {}",
+                                dto.avg_price, dto.cur_price
+                            );
                             println!("  Realized  : {}", dto.realized_pnl);
                             println!("  Closed at : {}", dto.timestamp);
                             println!();
@@ -699,18 +741,25 @@ pub async fn run(sub: DataSubcommand, ctx: &Ctx) -> Result<(), HeatError> {
             write_json(ctx, val)
         }
 
-        DataSubcommand::Trades { user, limit, offset } => {
+        DataSubcommand::Trades {
+            user,
+            limit,
+            offset,
+        } => {
             let addr = resolve_user(user, ctx)?;
             let req = if let Some(o) = offset {
                 TradesRequest::builder()
                     .user(addr)
-                    .limit(limit).map_err(bound_err)?
-                    .offset(o).map_err(bound_err)?
+                    .limit(limit)
+                    .map_err(bound_err)?
+                    .offset(o)
+                    .map_err(bound_err)?
                     .build()
             } else {
                 TradesRequest::builder()
                     .user(addr)
-                    .limit(limit).map_err(bound_err)?
+                    .limit(limit)
+                    .map_err(bound_err)?
                     .build()
             };
             let trades = client.trades(&req).await.map_err(data_err)?;
@@ -721,7 +770,10 @@ pub async fn run(sub: DataSubcommand, ctx: &Ctx) -> Result<(), HeatError> {
                         println!("No trades.");
                     } else {
                         for dto in &dtos {
-                            println!("  {} {} @ {} x{} | {}", dto.side, dto.outcome, dto.price, dto.size, dto.title);
+                            println!(
+                                "  {} {} @ {} x{} | {}",
+                                dto.side, dto.outcome, dto.price, dto.size, dto.title
+                            );
                         }
                     }
                 }
@@ -735,18 +787,25 @@ pub async fn run(sub: DataSubcommand, ctx: &Ctx) -> Result<(), HeatError> {
             Ok(())
         }
 
-        DataSubcommand::Activity { user, limit, offset } => {
+        DataSubcommand::Activity {
+            user,
+            limit,
+            offset,
+        } => {
             let addr = resolve_user(user, ctx)?;
             let req = if let Some(o) = offset {
                 ActivityRequest::builder()
                     .user(addr)
-                    .limit(limit).map_err(bound_err)?
-                    .offset(o).map_err(bound_err)?
+                    .limit(limit)
+                    .map_err(bound_err)?
+                    .offset(o)
+                    .map_err(bound_err)?
                     .build()
             } else {
                 ActivityRequest::builder()
                     .user(addr)
-                    .limit(limit).map_err(bound_err)?
+                    .limit(limit)
+                    .map_err(bound_err)?
                     .build()
             };
             let activity = client.activity(&req).await.map_err(data_err)?;
@@ -759,7 +818,10 @@ pub async fn run(sub: DataSubcommand, ctx: &Ctx) -> Result<(), HeatError> {
                         for dto in &dtos {
                             let market = dto.title.as_deref().unwrap_or("-");
                             let outcome = dto.outcome.as_deref().unwrap_or("-");
-                            println!("  [{}] {} {} {} USDC | {}", dto.activity_type, market, outcome, dto.usdc_size, dto.timestamp);
+                            println!(
+                                "  [{}] {} {} {} USDC | {}",
+                                dto.activity_type, market, outcome, dto.usdc_size, dto.timestamp
+                            );
                         }
                     }
                 }
@@ -782,7 +844,8 @@ pub async fn run(sub: DataSubcommand, ctx: &Ctx) -> Result<(), HeatError> {
             let limit = limit.min(20);
             let req = HoldersRequest::builder()
                 .markets(market_list)
-                .limit(limit).map_err(bound_err)?
+                .limit(limit)
+                .map_err(bound_err)?
                 .build();
             let holders = client.holders(&req).await.map_err(data_err)?;
             let dtos: Vec<MetaHolderDto> = holders.iter().map(MetaHolderDto::from).collect();
@@ -797,9 +860,7 @@ pub async fn run(sub: DataSubcommand, ctx: &Ctx) -> Result<(), HeatError> {
                 .split(',')
                 .map(|s| parse_b256(s.trim()))
                 .collect::<Result<Vec<_>, _>>()?;
-            let req = OpenInterestRequest::builder()
-                .markets(market_list)
-                .build();
+            let req = OpenInterestRequest::builder().markets(market_list).build();
             let oi = client.open_interest(&req).await.map_err(data_err)?;
             let dtos: Vec<OpenInterestDto> = oi.iter().map(OpenInterestDto::from).collect();
             let val = serde_json::to_value(&dtos).map_err(|e| {
@@ -818,7 +879,12 @@ pub async fn run(sub: DataSubcommand, ctx: &Ctx) -> Result<(), HeatError> {
             write_json(ctx, val)
         }
 
-        DataSubcommand::Leaderboard { period, order_by, limit, offset } => {
+        DataSubcommand::Leaderboard {
+            period,
+            order_by,
+            limit,
+            offset,
+        } => {
             let tp = parse_time_period(&period)?;
             let ob = match order_by.to_lowercase().as_str() {
                 "pnl" => LeaderboardOrderBy::Pnl,
@@ -835,23 +901,30 @@ pub async fn run(sub: DataSubcommand, ctx: &Ctx) -> Result<(), HeatError> {
                 TraderLeaderboardRequest::builder()
                     .time_period(tp)
                     .order_by(ob)
-                    .limit(limit).map_err(bound_err)?
-                    .offset(o).map_err(bound_err)?
+                    .limit(limit)
+                    .map_err(bound_err)?
+                    .offset(o)
+                    .map_err(bound_err)?
                     .build()
             } else {
                 TraderLeaderboardRequest::builder()
                     .time_period(tp)
                     .order_by(ob)
-                    .limit(limit).map_err(bound_err)?
+                    .limit(limit)
+                    .map_err(bound_err)?
                     .build()
             };
             let lb = client.leaderboard(&req).await.map_err(data_err)?;
-            let dtos: Vec<TraderLeaderboardEntryDto> = lb.iter().map(TraderLeaderboardEntryDto::from).collect();
+            let dtos: Vec<TraderLeaderboardEntryDto> =
+                lb.iter().map(TraderLeaderboardEntryDto::from).collect();
             match ctx.output.format {
                 OutputFormat::Pretty => {
                     for dto in &dtos {
                         let name = dto.user_name.as_deref().unwrap_or(&dto.proxy_wallet);
-                        println!("  #{:>3}  {:<30}  vol {}  pnl {}", dto.rank, name, dto.vol, dto.pnl);
+                        println!(
+                            "  #{:>3}  {:<30}  vol {}  pnl {}",
+                            dto.rank, name, dto.vol, dto.pnl
+                        );
                     }
                 }
                 _ => {
@@ -864,27 +937,38 @@ pub async fn run(sub: DataSubcommand, ctx: &Ctx) -> Result<(), HeatError> {
             Ok(())
         }
 
-        DataSubcommand::BuilderLeaderboard { period, limit, offset } => {
+        DataSubcommand::BuilderLeaderboard {
+            period,
+            limit,
+            offset,
+        } => {
             let tp = parse_time_period(&period)?;
             let req = if let Some(o) = offset {
                 BuilderLeaderboardRequest::builder()
                     .time_period(tp)
-                    .limit(limit).map_err(bound_err)?
-                    .offset(o).map_err(bound_err)?
+                    .limit(limit)
+                    .map_err(bound_err)?
+                    .offset(o)
+                    .map_err(bound_err)?
                     .build()
             } else {
                 BuilderLeaderboardRequest::builder()
                     .time_period(tp)
-                    .limit(limit).map_err(bound_err)?
+                    .limit(limit)
+                    .map_err(bound_err)?
                     .build()
             };
             let lb = client.builder_leaderboard(&req).await.map_err(data_err)?;
-            let dtos: Vec<BuilderLeaderboardEntryDto> = lb.iter().map(BuilderLeaderboardEntryDto::from).collect();
+            let dtos: Vec<BuilderLeaderboardEntryDto> =
+                lb.iter().map(BuilderLeaderboardEntryDto::from).collect();
             match ctx.output.format {
                 OutputFormat::Pretty => {
                     for dto in &dtos {
                         let tick = if dto.verified { "✓" } else { " " };
-                        println!("  #{:>3}  {}{:<30}  vol {}  users {}", dto.rank, tick, dto.builder, dto.volume, dto.active_users);
+                        println!(
+                            "  #{:>3}  {}{:<30}  vol {}  users {}",
+                            dto.rank, tick, dto.builder, dto.volume, dto.active_users
+                        );
                     }
                 }
                 _ => {
@@ -899,11 +983,10 @@ pub async fn run(sub: DataSubcommand, ctx: &Ctx) -> Result<(), HeatError> {
 
         DataSubcommand::BuilderVolume { period } => {
             let tp = parse_time_period(&period)?;
-            let req = BuilderVolumeRequest::builder()
-                .time_period(tp)
-                .build();
+            let req = BuilderVolumeRequest::builder().time_period(tp).build();
             let vol = client.builder_volume(&req).await.map_err(data_err)?;
-            let dtos: Vec<BuilderVolumeEntryDto> = vol.iter().map(BuilderVolumeEntryDto::from).collect();
+            let dtos: Vec<BuilderVolumeEntryDto> =
+                vol.iter().map(BuilderVolumeEntryDto::from).collect();
             let val = serde_json::to_value(&dtos).map_err(|e| {
                 HeatError::internal("serialize", format!("Serialization failed: {e}"))
             })?;
@@ -969,7 +1052,11 @@ mod tests {
     #[test]
     fn fmt_activity_type_unknown_is_lowercased() {
         let s = super::fmt_activity_type(&ActivityType::Unknown("CUSTOM".to_string()));
-        assert_eq!(s, s.to_lowercase(), "unknown activity type must be lowercased");
+        assert_eq!(
+            s,
+            s.to_lowercase(),
+            "unknown activity type must be lowercased"
+        );
     }
 
     // ── parse_time_period ───────────────────────────────────────────────────
@@ -1006,7 +1093,8 @@ mod tests {
         // Build a PositionDto directly without needing a live Position.
         let dto = PositionDto {
             proxy_wallet: "0x0000000000000000000000000000000000000001".to_string(),
-            condition_id: "0x0000000000000000000000000000000000000000000000000000000000000001".to_string(),
+            condition_id: "0x0000000000000000000000000000000000000000000000000000000000000001"
+                .to_string(),
             asset: "0x1".to_string(),
             outcome: "Yes".to_string(),
             outcome_index: 0,
@@ -1032,22 +1120,49 @@ mod tests {
 
         // Money fields must be JSON strings, not numbers, to preserve decimal precision.
         assert!(json["size"].is_string(), "size must serialize as string");
-        assert!(json["avg_price"].is_string(), "avg_price must serialize as string");
-        assert!(json["cur_price"].is_string(), "cur_price must serialize as string");
-        assert!(json["current_value"].is_string(), "current_value must serialize as string");
-        assert!(json["cash_pnl"].is_string(), "cash_pnl must serialize as string");
-        assert!(json["percent_pnl"].is_string(), "percent_pnl must serialize as string");
+        assert!(
+            json["avg_price"].is_string(),
+            "avg_price must serialize as string"
+        );
+        assert!(
+            json["cur_price"].is_string(),
+            "cur_price must serialize as string"
+        );
+        assert!(
+            json["current_value"].is_string(),
+            "current_value must serialize as string"
+        );
+        assert!(
+            json["cash_pnl"].is_string(),
+            "cash_pnl must serialize as string"
+        );
+        assert!(
+            json["percent_pnl"].is_string(),
+            "percent_pnl must serialize as string"
+        );
 
         // Boolean fields must serialize as booleans.
-        assert!(json["redeemable"].is_boolean(), "redeemable must serialize as bool");
-        assert!(json["negative_risk"].is_boolean(), "negative_risk must serialize as bool");
+        assert!(
+            json["redeemable"].is_boolean(),
+            "redeemable must serialize as bool"
+        );
+        assert!(
+            json["negative_risk"].is_boolean(),
+            "negative_risk must serialize as bool"
+        );
 
         // Integer fields must serialize as numbers.
-        assert!(json["outcome_index"].is_number(), "outcome_index must serialize as number");
+        assert!(
+            json["outcome_index"].is_number(),
+            "outcome_index must serialize as number"
+        );
 
         // Verify no Debug-formatted content (PascalCase struct names would indicate Debug derive).
         let raw = serde_json::to_string(&dto).unwrap();
-        assert!(!raw.contains("PositionDto"), "serialized JSON must not contain struct name");
+        assert!(
+            !raw.contains("PositionDto"),
+            "serialized JSON must not contain struct name"
+        );
     }
 
     #[test]
@@ -1077,14 +1192,32 @@ mod tests {
         };
 
         let json = serde_json::to_value(&dto).unwrap();
-        let obj = json.as_object().expect("PositionDto must serialize to JSON object");
+        let obj = json
+            .as_object()
+            .expect("PositionDto must serialize to JSON object");
 
         // Required keys must be present.
         for key in &[
-            "proxy_wallet", "condition_id", "asset", "outcome", "outcome_index",
-            "size", "avg_price", "cur_price", "current_value", "initial_value",
-            "cash_pnl", "percent_pnl", "realized_pnl", "total_bought",
-            "redeemable", "mergeable", "title", "slug", "event_slug", "end_date",
+            "proxy_wallet",
+            "condition_id",
+            "asset",
+            "outcome",
+            "outcome_index",
+            "size",
+            "avg_price",
+            "cur_price",
+            "current_value",
+            "initial_value",
+            "cash_pnl",
+            "percent_pnl",
+            "realized_pnl",
+            "total_bought",
+            "redeemable",
+            "mergeable",
+            "title",
+            "slug",
+            "event_slug",
+            "end_date",
             "negative_risk",
         ] {
             assert!(obj.contains_key(*key), "JSON must contain key '{key}'");
@@ -1101,7 +1234,10 @@ mod tests {
         };
 
         let json = serde_json::to_value(&dto).unwrap();
-        assert!(json["value"].is_string(), "value must be a JSON string, not a number");
+        assert!(
+            json["value"].is_string(),
+            "value must be a JSON string, not a number"
+        );
         assert_eq!(json["value"].as_str().unwrap(), "1234.56");
     }
 }

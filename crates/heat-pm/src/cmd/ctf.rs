@@ -4,12 +4,12 @@ use clap::Subcommand;
 use heat_core::ctx::Ctx;
 use heat_core::error::HeatError;
 use heat_core::safety::DryRunPreview;
+use polymarket_client_sdk::POLYGON;
 use polymarket_client_sdk::ctf;
 use polymarket_client_sdk::ctf::types::{
     CollectionIdRequest, ConditionIdRequest, MergePositionsRequest, PositionIdRequest,
     RedeemNegRiskRequest, RedeemPositionsRequest, SplitPositionRequest,
 };
-use polymarket_client_sdk::POLYGON;
 use serde::Serialize;
 
 use crate::auth;
@@ -23,21 +23,18 @@ fn ctf_err(e: impl std::fmt::Display) -> HeatError {
 }
 
 fn parse_u256(s: &str) -> Result<alloy::primitives::U256, HeatError> {
-    s.parse().map_err(|_| {
-        HeatError::validation("invalid_u256", format!("Invalid U256 value: {s}"))
-    })
+    s.parse()
+        .map_err(|_| HeatError::validation("invalid_u256", format!("Invalid U256 value: {s}")))
 }
 
 fn parse_b256(s: &str) -> Result<alloy::primitives::B256, HeatError> {
-    s.parse().map_err(|_| {
-        HeatError::validation("invalid_b256", format!("Invalid B256 value: {s}"))
-    })
+    s.parse()
+        .map_err(|_| HeatError::validation("invalid_b256", format!("Invalid B256 value: {s}")))
 }
 
 fn parse_address(s: &str) -> Result<alloy::primitives::Address, HeatError> {
-    s.parse().map_err(|_| {
-        HeatError::validation("invalid_address", format!("Invalid address: {s}"))
-    })
+    s.parse()
+        .map_err(|_| HeatError::validation("invalid_address", format!("Invalid address: {s}")))
 }
 
 fn write_json(ctx: &Ctx, val: serde_json::Value) -> Result<(), HeatError> {
@@ -140,7 +137,12 @@ pub enum CtfSubcommand {
 
 pub async fn run(sub: CtfSubcommand, ctx: &Ctx) -> Result<(), HeatError> {
     match sub {
-        CtfSubcommand::Split { collateral, condition_id, partition, amount } => {
+        CtfSubcommand::Split {
+            collateral,
+            condition_id,
+            partition,
+            amount,
+        } => {
             let amt = parse_u256(&amount)?;
             let coll = parse_address(&collateral)?;
             let cond = parse_b256(&condition_id)?;
@@ -173,7 +175,12 @@ pub async fn run(sub: CtfSubcommand, ctx: &Ctx) -> Result<(), HeatError> {
             };
             ctx.output.write_data(&info, None).map_err(io_err)
         }
-        CtfSubcommand::Merge { collateral, condition_id, partition, amount } => {
+        CtfSubcommand::Merge {
+            collateral,
+            condition_id,
+            partition,
+            amount,
+        } => {
             let amt = parse_u256(&amount)?;
             let coll = parse_address(&collateral)?;
             let cond = parse_b256(&condition_id)?;
@@ -206,11 +213,17 @@ pub async fn run(sub: CtfSubcommand, ctx: &Ctx) -> Result<(), HeatError> {
             };
             ctx.output.write_data(&info, None).map_err(io_err)
         }
-        CtfSubcommand::Redeem { collateral, condition_id, index_sets } => {
+        CtfSubcommand::Redeem {
+            collateral,
+            condition_id,
+            index_sets,
+        } => {
             let coll = parse_address(&collateral)?;
             let cond = parse_b256(&condition_id)?;
-            let sets: Result<Vec<alloy::primitives::U256>, _> =
-                index_sets.split(',').map(|s| parse_u256(s.trim())).collect();
+            let sets: Result<Vec<alloy::primitives::U256>, _> = index_sets
+                .split(',')
+                .map(|s| parse_u256(s.trim()))
+                .collect();
             let sets = sets?;
 
             if ctx.dry_run {
@@ -235,7 +248,10 @@ pub async fn run(sub: CtfSubcommand, ctx: &Ctx) -> Result<(), HeatError> {
             };
             ctx.output.write_data(&info, None).map_err(io_err)
         }
-        CtfSubcommand::RedeemNegRisk { condition_id, amounts } => {
+        CtfSubcommand::RedeemNegRisk {
+            condition_id,
+            amounts,
+        } => {
             let cond = parse_b256(&condition_id)?;
             let amts: Result<Vec<alloy::primitives::U256>, _> =
                 amounts.split(',').map(|s| parse_u256(s.trim())).collect();
@@ -262,7 +278,11 @@ pub async fn run(sub: CtfSubcommand, ctx: &Ctx) -> Result<(), HeatError> {
             };
             ctx.output.write_data(&info, None).map_err(io_err)
         }
-        CtfSubcommand::ConditionId { oracle, question_id, outcome_slots } => {
+        CtfSubcommand::ConditionId {
+            oracle,
+            question_id,
+            outcome_slots,
+        } => {
             let oracle = parse_address(&oracle)?;
             let qid = parse_b256(&question_id)?;
             let slots = alloy::primitives::U256::from(outcome_slots);
@@ -275,9 +295,16 @@ pub async fn run(sub: CtfSubcommand, ctx: &Ctx) -> Result<(), HeatError> {
                 .outcome_slot_count(slots)
                 .build();
             let result = client.condition_id(&req).await.map_err(ctf_err)?;
-            write_json(ctx, serde_json::json!({ "condition_id": format!("{}", result.condition_id) }))
+            write_json(
+                ctx,
+                serde_json::json!({ "condition_id": format!("{}", result.condition_id) }),
+            )
         }
-        CtfSubcommand::CollectionId { condition_id, index_set, parent } => {
+        CtfSubcommand::CollectionId {
+            condition_id,
+            index_set,
+            parent,
+        } => {
             let cond = parse_b256(&condition_id)?;
             let parent_id = match &parent {
                 Some(p) => parse_b256(p)?,
@@ -292,9 +319,15 @@ pub async fn run(sub: CtfSubcommand, ctx: &Ctx) -> Result<(), HeatError> {
                 .parent_collection_id(parent_id)
                 .build();
             let result = client.collection_id(&req).await.map_err(ctf_err)?;
-            write_json(ctx, serde_json::json!({ "collection_id": format!("{}", result.collection_id) }))
+            write_json(
+                ctx,
+                serde_json::json!({ "collection_id": format!("{}", result.collection_id) }),
+            )
         }
-        CtfSubcommand::PositionId { collateral, collection_id } => {
+        CtfSubcommand::PositionId {
+            collateral,
+            collection_id,
+        } => {
             let coll = parse_address(&collateral)?;
             let cid = parse_b256(&collection_id)?;
 
@@ -305,7 +338,10 @@ pub async fn run(sub: CtfSubcommand, ctx: &Ctx) -> Result<(), HeatError> {
                 .collection_id(cid)
                 .build();
             let result = client.position_id(&req).await.map_err(ctf_err)?;
-            write_json(ctx, serde_json::json!({ "position_id": result.position_id.to_string() }))
+            write_json(
+                ctx,
+                serde_json::json!({ "position_id": result.position_id.to_string() }),
+            )
         }
     }
 }
