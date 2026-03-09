@@ -37,9 +37,9 @@ pub fn keypair(ctx: &Ctx) -> Result<Keypair, HeatError> {
     let account = ctx.require_account()?;
     account.require_family(AccountFamily::Solana, "solana")?;
 
-    let password = keystore::resolve_password(None, None)?.ok_or_else(|| {
+    let password = keystore::resolve_account_password(&account)?.ok_or_else(|| {
         HeatError::auth("no_password", "Password required to decrypt Solana key")
-            .with_hint("Set the HEAT_PASSWORD environment variable")
+            .with_hint("Create the account with --persist-password, use --password-file/--password-env, or set HEAT_PASSWORD")
     })?;
 
     let mut seed_bytes = keystore::load_key(&account.key_name, password.as_bytes())?;

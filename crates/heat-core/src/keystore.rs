@@ -304,6 +304,16 @@ pub fn resolve_password(
     Ok(None)
 }
 
+/// Resolve password for an account using account metadata, then HEAT_PASSWORD.
+pub fn resolve_account_password(
+    account: &crate::accounts::Account,
+) -> Result<Option<String>, HeatError> {
+    resolve_password(
+        account.password_file.as_deref(),
+        account.password_env.as_deref(),
+    )
+}
+
 /// Normalize a keystore address field to 0x-prefixed lowercase.
 /// Accepts with or without 0x prefix, validates 40 hex chars.
 pub fn normalize_keystore_address(addr: &str) -> Result<String, HeatError> {

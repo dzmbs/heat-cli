@@ -73,6 +73,7 @@ mod tests {
         config::HeatConfig,
         output::{Output, OutputFormat},
     };
+    use std::sync::{Mutex, OnceLock};
 
     fn make_ctx(config: HeatConfig) -> Ctx {
         Ctx {
@@ -83,6 +84,11 @@ mod tests {
             dry_run: false,
             yes: false,
         }
+    }
+
+    fn env_lock() -> &'static Mutex<()> {
+        static LOCK: OnceLock<Mutex<()>> = OnceLock::new();
+        LOCK.get_or_init(|| Mutex::new(()))
     }
 
     /// Clear all Solana RPC env vars so tests do not bleed into each other
@@ -97,6 +103,7 @@ mod tests {
 
     #[test]
     fn explicit_wins() {
+        let _guard = env_lock().lock().unwrap();
         clear_all_solana_env();
         let ctx = make_ctx(HeatConfig::default());
         let url = resolve_rpc_url(
@@ -110,6 +117,7 @@ mod tests {
 
     #[test]
     fn falls_back_to_default_when_nothing_set() {
+        let _guard = env_lock().lock().unwrap();
         clear_all_solana_env();
         let ctx = make_ctx(HeatConfig::default());
         let url = resolve_rpc_url(&ctx, SolanaCluster::Mainnet, None).unwrap();
@@ -118,6 +126,7 @@ mod tests {
 
     #[test]
     fn generic_env_var_is_used() {
+        let _guard = env_lock().lock().unwrap();
         clear_all_solana_env();
         unsafe {
             std::env::set_var("HEAT_RPC_SOLANA", "https://env-generic.example.com");
@@ -130,6 +139,7 @@ mod tests {
 
     #[test]
     fn cluster_specific_env_var_beats_generic() {
+        let _guard = env_lock().lock().unwrap();
         clear_all_solana_env();
         unsafe {
             std::env::set_var("HEAT_RPC_SOLANA", "https://env-generic.example.com");

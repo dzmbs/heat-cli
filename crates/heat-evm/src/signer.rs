@@ -139,9 +139,9 @@ pub async fn wallet_provider(
 
 /// Decrypt and build a signer from an account's stored key.
 fn signer_from_account(account: &Account) -> Result<PrivateKeySigner, HeatError> {
-    let password = keystore::resolve_password(None, None)?.ok_or_else(|| {
+    let password = keystore::resolve_account_password(account)?.ok_or_else(|| {
         HeatError::auth("no_password", "Password required to decrypt key")
-            .with_hint("Set the HEAT_PASSWORD environment variable")
+            .with_hint("Create the account with --persist-password, use --password-file/--password-env, or set HEAT_PASSWORD")
     })?;
 
     let key_bytes = keystore::load_key(&account.key_name, password.as_bytes())?;
@@ -183,6 +183,8 @@ mod tests {
             key_name: "test".to_string(),
             address: None,
             default_network: None,
+            password_file: None,
+            password_env: None,
             protocols: Default::default(),
         };
         assert!(account.require_family(AccountFamily::Evm, "evm").is_ok());
@@ -198,6 +200,8 @@ mod tests {
             key_name: "nonexistent_key_heat_evm_test".to_string(),
             address: None,
             default_network: None,
+            password_file: None,
+            password_env: None,
             protocols: Default::default(),
         };
         let err = signer_from_account(&account).unwrap_err();

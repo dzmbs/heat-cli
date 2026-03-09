@@ -61,9 +61,9 @@ pub fn resolve_signature_type(ctx: &Ctx, flag: Option<&str>) -> Result<Signature
 pub fn resolve_signer(ctx: &Ctx) -> Result<PrivateKeySigner, HeatError> {
     let account = ctx.require_account()?;
 
-    let password = keystore::resolve_password(None, None)?.ok_or_else(|| {
+    let password = keystore::resolve_account_password(&account)?.ok_or_else(|| {
         HeatError::auth("no_password", "Password required to decrypt key")
-            .with_hint("Set HEAT_PASSWORD env var")
+            .with_hint("Create the account with --persist-password, use --password-file/--password-env, or set HEAT_PASSWORD")
     })?;
 
     let key_bytes = keystore::load_key(&account.key_name, password.as_bytes())?;
