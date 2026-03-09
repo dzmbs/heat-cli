@@ -1,0 +1,25 @@
+[package]
+name = "heat-aave"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+heat-core = { workspace = true }
+heat-evm = { path = "../heat-evm" }
+clap = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+tokio = { workspace = true }
+futures = "0.3"
+
+# Alloy EVM stack (same features as heat-evm)
+alloy = { version = "1.5", features = [
+    "providers",
+    "signers",
+    "signer-local",
+    "contract",
+    "sol-types",
+    "transports",
+    "transport-http",
+    "rpc-types",
+] }
