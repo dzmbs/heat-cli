@@ -4,6 +4,7 @@ mod clob;
 mod ctf;
 mod data;
 mod gamma;
+mod stream;
 
 use ::clap::{Args, Subcommand};
 use heat_core::ctx::Ctx;
@@ -134,6 +135,9 @@ pub enum PmSubcommand {
     #[command(subcommand)]
     Approve(approve::ApproveSubcommand),
 
+    /// Real-time WebSocket streams
+    Stream(stream::StreamArgs),
+
     /// API status check
     Status,
 }
@@ -246,6 +250,7 @@ pub async fn run(cmd: PmCmd, ctx: &Ctx) -> Result<(), HeatError> {
         PmSubcommand::Data(sub) => data::run(sub, ctx).await,
         PmSubcommand::Bridge(sub) => bridge::run(sub, ctx).await,
         PmSubcommand::Approve(sub) => approve::run(sub, ctx).await,
+        PmSubcommand::Stream(sub) => stream::run(sub, ctx).await,
         PmSubcommand::Status => gamma::status(ctx).await,
     }
 }
