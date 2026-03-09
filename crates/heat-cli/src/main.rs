@@ -45,11 +45,17 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Command {
+    /// Aave V3 lending protocol commands
+    Aave(heat_aave::cmd::AaveCmd),
+
     /// Manage accounts
     Accounts(cmd_accounts::AccountsCmd),
 
     /// Hyperliquid protocol commands
     Hl(heat_hl::cmd::HlCmd),
+
+    /// LI.FI cross-chain bridge and swap commands
+    Lifi(heat_lifi::cmd::LifiCmd),
 
     /// Polymarket protocol commands
     #[command(alias = "pm")]
@@ -104,8 +110,10 @@ async fn main() {
 
 async fn run(command: Command, ctx: &Ctx) -> Result<(), HeatError> {
     match command {
+        Command::Aave(cmd) => heat_aave::cmd::run(cmd, ctx).await,
         Command::Accounts(cmd) => cmd_accounts::run(cmd, ctx),
         Command::Hl(cmd) => heat_hl::cmd::run(cmd, ctx).await,
+        Command::Lifi(cmd) => heat_lifi::cmd::run(cmd, ctx).await,
         Command::Polymarket(cmd) => heat_pm::cmd::run(cmd, ctx).await,
         Command::Config => cmd_config(ctx),
     }
