@@ -4,6 +4,7 @@ use heat_core::ctx::Ctx;
 use heat_core::error::HeatError;
 use heat_core::keystore;
 use heat_core::output::OutputFormat;
+use rand::RngCore;
 use serde::Serialize;
 
 #[derive(Args)]
@@ -21,25 +22,31 @@ pub enum AccountsSubcommand {
         /// Account name
         name: String,
     },
-    /// Create a new account from a private key
+    /// Create a new local account
     Create {
         /// Account name
         name: String,
         /// Account type: evm-local or solana-local
         #[arg(long, value_name = "TYPE", default_value = "evm-local")]
         account_type: String,
+        /// Generate a fresh private key locally instead of supplying one
+        #[arg(long)]
+        generate: bool,
         /// Private key value (WARNING: visible in process list and shell history — prefer --key-file)
         #[arg(long)]
         key: Option<String>,
         /// Path to file containing the private key (recommended over --key)
         #[arg(long)]
         key_file: Option<String>,
-        /// Password file for key encryption
+        /// Read password from file (file must already exist)
         #[arg(long)]
         password_file: Option<String>,
-        /// Environment variable containing password
+        /// Read password from this environment variable
         #[arg(long)]
         password_env: Option<String>,
+        /// Save password to this file (recommended; also enables generated-password flows)
+        #[arg(long)]
+        persist_password: Option<String>,
     },
     /// Import an existing keystore file
     Import {
@@ -51,12 +58,15 @@ pub enum AccountsSubcommand {
         /// Path to keystore file (V3 JSON for EVM, JSON array for Solana)
         #[arg(long)]
         keystore: String,
-        /// Password file for key encryption (Solana imports only)
+        /// Read password from file (used for Solana re-encryption or to remember EVM keystore password)
         #[arg(long)]
         password_file: Option<String>,
-        /// Environment variable containing password (Solana imports only)
+        /// Read password from this environment variable (used for Solana re-encryption or to remember EVM keystore password)
         #[arg(long)]
         password_env: Option<String>,
+        /// Save password to this file after import (Solana re-encryption, or copy existing EVM keystore password)
+        #[arg(long)]
+        persist_password: Option<String>,
     },
     /// Set the default account
     Use {
@@ -80,6 +90,10 @@ struct AccountInfo {
     address: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     default_network: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    password_file: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    password_env: Option<String>,
 }
 
 impl From<&Account> for AccountInfo {
@@ -90,6 +104,8 @@ impl From<&Account> for AccountInfo {
             key_name: a.key_name.clone(),
             address: a.address.clone(),
             default_network: a.default_network.clone(),
+            password_file: a.password_file.clone(),
+            password_env: a.password_env.clone(),
         }
     }
 }
@@ -101,17 +117,21 @@ pub fn run(cmd: AccountsCmd, ctx: &Ctx) -> Result<(), HeatError> {
         AccountsSubcommand::Create {
             name,
             account_type,
+            generate,
             key,
             key_file,
             password_file,
             password_env,
+            persist_password,
         } => create(
             &name,
             &account_type,
+            generate,
             key.as_deref(),
             key_file.as_deref(),
             password_file.as_deref(),
             password_env.as_deref(),
+            persist_password.as_deref(),
             ctx,
         ),
         AccountsSubcommand::Import {
@@ -120,12 +140,14 @@ pub fn run(cmd: AccountsCmd, ctx: &Ctx) -> Result<(), HeatError> {
             keystore,
             password_file,
             password_env,
+            persist_password,
         } => import(
             &name,
             &account_type,
             &keystore,
             password_file.as_deref(),
             password_env.as_deref(),
+            persist_password.as_deref(),
             ctx,
         ),
         AccountsSubcommand::Use { name } => use_account(&name, ctx),
@@ -188,99 +210,132 @@ fn get(name: &str, ctx: &Ctx) -> Result<(), HeatError> {
         if let Some(net) = &info.default_network {
             println!("Network: {net}");
         }
+        if let Some(path) = &info.password_file {
+            println!("Password file: {path}");
+        }
+        if let Some(var) = &info.password_env {
+            println!("Password env:  {var}");
+        }
     }
     Ok(())
 }
 
+#[allow(clippy::too_many_arguments)]
 fn create(
     name: &str,
     account_type_str: &str,
+    generate: bool,
     key_direct: Option<&str>,
     key_file: Option<&str>,
     password_file: Option<&str>,
     password_env: Option<&str>,
+    persist_password: Option<&str>,
     ctx: &Ctx,
 ) -> Result<(), HeatError> {
-    let key_input = match (key_direct, key_file) {
-        (Some(k), None) => k.to_string(),
-        (None, Some(path)) => std::fs::read_to_string(path)
-            .map_err(|e| {
-                HeatError::validation("key_file_read", format!("Failed to read key file: {e}"))
-            })?
-            .trim()
-            .to_string(),
-        (Some(_), Some(_)) => {
+    validate_password_flags(password_file, password_env)?;
+    require_recovery_strategy(password_file, password_env, persist_password)?;
+
+    let supplied_key = match (generate, key_direct, key_file) {
+        (true, None, None) => None,
+        (true, Some(_), _) | (true, _, Some(_)) => {
+            return Err(HeatError::validation(
+                "key_conflict",
+                "Cannot combine --generate with --key or --key-file",
+            ));
+        }
+        (false, Some(k), None) => Some(k.to_string()),
+        (false, None, Some(path)) => Some(
+            std::fs::read_to_string(path)
+                .map_err(|e| {
+                    HeatError::validation("key_file_read", format!("Failed to read key file: {e}"))
+                })?
+                .trim()
+                .to_string(),
+        ),
+        (false, Some(_), Some(_)) => {
             return Err(HeatError::validation(
                 "key_conflict",
                 "Cannot specify both --key and --key-file",
             ));
         }
-        (None, None) => {
+        (false, None, None) => {
             return Err(HeatError::validation(
                 "no_key",
-                "Either --key or --key-file must be provided",
+                "Provide --generate, --key, or --key-file",
             )
-            .with_hint("Use --key-file to avoid exposing the key in process list"));
+            .with_hint(
+                "Use --generate for a new wallet, or --key-file to import local key material",
+            ));
         }
     };
-    let key_input = key_input.as_str();
 
     preflight_name(name)?;
 
     let account_kind = parse_account_kind(account_type_str)?;
 
-    let password = keystore::resolve_password(password_file, password_env)?.ok_or_else(|| {
-        HeatError::auth("no_password", "Password required for key encryption")
-            .with_hint("Use --password-file, --password-env, or set HEAT_PASSWORD")
-    })?;
+    let password = resolve_or_generate_password(password_file, password_env, persist_password)?;
+    if let Some(path) = persist_password {
+        persist_password_file(path, &password)?;
+    }
 
-    let (key_bytes, address) = match account_kind {
+    let (key_bytes, address, generated_key) = match account_kind {
         AccountKind::EvmLocal => {
-            let hex_str = key_input.strip_prefix("0x").unwrap_or(key_input);
-            let bytes = hex::decode(hex_str).map_err(|_| {
-                HeatError::validation("invalid_key", "Private key must be valid hex")
-            })?;
-            if bytes.len() != 32 {
-                return Err(HeatError::validation(
-                    "invalid_key_length",
-                    "EVM private key must be 32 bytes (64 hex chars)",
-                ));
-            }
-            let addr = keystore::derive_evm_address(&bytes)?;
-            (bytes, addr)
-        }
-        AccountKind::SolanaLocal => {
-            // Accept base58-encoded 32-byte seed or 64-byte keypair
-            let bytes = bs58::decode(key_input).into_vec().map_err(|_| {
-                HeatError::validation("invalid_key", "Solana key must be base58-encoded")
-            })?;
-            let seed = match bytes.len() {
-                32 => bytes,
-                64 => {
-                    let seed = bytes[..32].to_vec();
-                    // Validate that the pubkey half matches the derived pubkey
-                    let expected = derive_solana_pubkey(&seed)?;
-                    let actual = bs58::encode(&bytes[32..]).into_string();
-                    if actual != expected {
+            let bytes = match supplied_key.as_deref() {
+                Some(key_input) => {
+                    let hex_str = key_input.strip_prefix("0x").unwrap_or(key_input);
+                    let bytes = hex::decode(hex_str).map_err(|_| {
+                        HeatError::validation("invalid_key", "Private key must be valid hex")
+                    })?;
+                    if bytes.len() != 32 {
                         return Err(HeatError::validation(
-                            "keypair_mismatch",
-                            "Public key half of keypair does not match derived public key",
-                        )
-                        .with_hint(
-                            "The last 32 bytes of a 64-byte keypair must be the Ed25519 public key",
+                            "invalid_key_length",
+                            "EVM private key must be 32 bytes (64 hex chars)",
                         ));
                     }
-                    seed
+                    bytes
                 }
-                _ => {
-                    return Err(HeatError::validation(
-                        "invalid_key_length",
-                        "Solana key must be 32 bytes (seed) or 64 bytes (keypair)",
-                    ));
+                None => generate_evm_private_key()?,
+            };
+            let addr = keystore::derive_evm_address(&bytes)?;
+            (bytes, addr, supplied_key.is_none())
+        }
+        AccountKind::SolanaLocal => {
+            let seed = match supplied_key.as_deref() {
+                Some(key_input) => {
+                    // Accept base58-encoded 32-byte seed or 64-byte keypair
+                    let bytes = bs58::decode(key_input).into_vec().map_err(|_| {
+                        HeatError::validation("invalid_key", "Solana key must be base58-encoded")
+                    })?;
+                    match bytes.len() {
+                        32 => bytes,
+                        64 => {
+                            let seed = bytes[..32].to_vec();
+                            // Validate that the pubkey half matches the derived pubkey
+                            let expected = derive_solana_pubkey(&seed)?;
+                            let actual = bs58::encode(&bytes[32..]).into_string();
+                            if actual != expected {
+                                return Err(HeatError::validation(
+                                    "keypair_mismatch",
+                                    "Public key half of keypair does not match derived public key",
+                                )
+                                .with_hint(
+                                    "The last 32 bytes of a 64-byte keypair must be the Ed25519 public key",
+                                ));
+                            }
+                            seed
+                        }
+                        _ => {
+                            return Err(HeatError::validation(
+                                "invalid_key_length",
+                                "Solana key must be 32 bytes (seed) or 64 bytes (keypair)",
+                            ));
+                        }
+                    }
                 }
+                None => generate_solana_seed(),
             };
             let addr = derive_solana_pubkey(&seed)?;
-            (seed, addr)
+            (seed, addr, supplied_key.is_none())
         }
     };
 
@@ -291,29 +346,62 @@ fn create(
         name: name.to_string(),
         account_type: account_kind,
         key_name: name.to_string(),
-        address: Some(address),
+        address: Some(address.clone()),
         default_network: None,
+        password_file: persist_password
+            .map(str::to_string)
+            .or_else(|| password_file.map(str::to_string)),
+        password_env: password_env.map(str::to_string),
         protocols: Default::default(),
     };
     account.save()?;
 
+    let generated_password = password_file.is_none() && password_env.is_none();
+    let recovery = describe_recovery(
+        password_file,
+        password_env,
+        persist_password,
+        generated_password,
+    );
     if ctx.output.format == OutputFormat::Json {
         let info = AccountInfo::from(&account);
-        ctx.output.write_data(&info, None).map_err(io_err)?;
+        let result = serde_json::json!({
+            "name": info.name,
+            "type": info.account_type,
+            "key_name": info.key_name,
+            "address": info.address,
+            "password_file": info.password_file,
+            "password_env": info.password_env,
+            "recovery": recovery,
+            "generated_key": generated_key,
+            "generated_password": generated_password,
+        });
+        ctx.output.write_data(&result, None).map_err(io_err)?;
     } else {
         ctx.output.diagnostic(&format!("Account '{name}' created."));
+        ctx.output.diagnostic(&format!("Address:  {address}"));
+        if generated_key {
+            ctx.output.diagnostic("Key:      generated locally");
+        }
+        if generated_password {
+            ctx.output.diagnostic("Password: generated locally");
+        }
+        ctx.output.diagnostic(&format!("Recovery: {recovery}"));
     }
     Ok(())
 }
 
+#[allow(clippy::too_many_arguments)]
 fn import(
     name: &str,
     account_type_str: &str,
     keystore_path: &str,
     password_file: Option<&str>,
     password_env: Option<&str>,
+    persist_password: Option<&str>,
     ctx: &Ctx,
 ) -> Result<(), HeatError> {
+    validate_password_flags(password_file, password_env)?;
     preflight_name(name)?;
 
     let account_kind = parse_account_kind(account_type_str)?;
@@ -325,8 +413,11 @@ fn import(
         )
     })?;
 
-    let (address, account_kind) = match account_kind {
+    let (address, account_kind, recovery) = match account_kind {
         AccountKind::EvmLocal => {
+            // EVM import copies an already-encrypted V3 keystore.
+            // Password flags are optional here and only control how Heat will find
+            // the existing keystore password later for signing.
             let parsed: heat_core::keystore::KeystoreFile = serde_json::from_str(&content)
                 .map_err(|e| {
                     HeatError::validation(
@@ -340,16 +431,43 @@ fn import(
                 .map(keystore::normalize_keystore_address)
                 .transpose()?;
 
-            // Write keystore file directly (it's already encrypted)
             let keys_dir = heat_core::config::HeatConfig::home_dir()?.join("keys");
             heat_core::fs::ensure_dir(&keys_dir)?;
             let dest = keys_dir.join(format!("{name}.json"));
             heat_core::fs::atomic_write_secure(&dest, content.as_bytes())?;
 
-            (address, AccountKind::EvmLocal)
+            if let Some(path) = persist_password {
+                let password = keystore::resolve_password(password_file, password_env)?.ok_or_else(|| {
+                    HeatError::auth(
+                        "no_password",
+                        "Imported EVM keystore password is required before it can be persisted",
+                    )
+                    .with_hint("Use --password-file or --password-env together with --persist-password")
+                })?;
+                persist_password_file(path, &password)?;
+            }
+
+            let recovery = if password_file.is_some()
+                || password_env.is_some()
+                || persist_password.is_some()
+            {
+                let generated_password = false;
+                Some(describe_recovery(
+                    password_file,
+                    password_env,
+                    persist_password,
+                    generated_password,
+                ))
+            } else {
+                None
+            };
+
+            (address, AccountKind::EvmLocal, recovery)
         }
         AccountKind::SolanaLocal => {
-            // Solana CLI exports keypairs as JSON arrays of 64 bytes: [u8; 64]
+            // Solana import re-encrypts with a Heat password — enforce recoverability.
+            require_recovery_strategy(password_file, password_env, persist_password)?;
+
             let bytes: Vec<u8> = serde_json::from_str(&content).map_err(|e| {
                 HeatError::validation(
                     "keystore_parse",
@@ -365,7 +483,6 @@ fn import(
             let seed = &bytes[..32];
             let address = derive_solana_pubkey(seed)?;
 
-            // Validate that the pubkey half matches the derived pubkey
             let actual_pubkey = bs58::encode(&bytes[32..]).into_string();
             if actual_pubkey != address {
                 return Err(HeatError::validation(
@@ -377,15 +494,22 @@ fn import(
                 ));
             }
 
-            // Encrypt the 32-byte seed into Heat's keystore format
             let password =
-                keystore::resolve_password(password_file, password_env)?.ok_or_else(|| {
-                    HeatError::auth("no_password", "Password required for key encryption")
-                        .with_hint("Use --password-file, --password-env, or set HEAT_PASSWORD")
-                })?;
+                resolve_or_generate_password(password_file, password_env, persist_password)?;
+            if let Some(path) = persist_password {
+                persist_password_file(path, &password)?;
+            }
             keystore::save_key(name, seed, password.as_bytes(), Some(&address))?;
 
-            (Some(address), AccountKind::SolanaLocal)
+            let generated_password = password_file.is_none() && password_env.is_none();
+            let recovery = describe_recovery(
+                password_file,
+                password_env,
+                persist_password,
+                generated_password,
+            );
+
+            (Some(address), AccountKind::SolanaLocal, Some(recovery))
         }
     };
 
@@ -395,16 +519,36 @@ fn import(
         key_name: name.to_string(),
         address,
         default_network: None,
+        password_file: persist_password
+            .map(str::to_string)
+            .or_else(|| password_file.map(str::to_string)),
+        password_env: password_env.map(str::to_string),
         protocols: Default::default(),
     };
     account.save()?;
 
     if ctx.output.format == OutputFormat::Json {
         let info = AccountInfo::from(&account);
-        ctx.output.write_data(&info, None).map_err(io_err)?;
+        if let Some(recovery) = recovery {
+            let result = serde_json::json!({
+                "name": info.name,
+                "type": info.account_type,
+                "key_name": info.key_name,
+                "address": info.address,
+                "password_file": info.password_file,
+                "password_env": info.password_env,
+                "recovery": recovery,
+            });
+            ctx.output.write_data(&result, None).map_err(io_err)?;
+        } else {
+            ctx.output.write_data(&info, None).map_err(io_err)?;
+        }
     } else {
         ctx.output
             .diagnostic(&format!("Account '{name}' imported from {keystore_path}."));
+        if let Some(recovery) = recovery {
+            ctx.output.diagnostic(&format!("Recovery: {recovery}"));
+        }
     }
     Ok(())
 }
@@ -489,6 +633,153 @@ fn preflight_name(name: &str) -> Result<(), HeatError> {
     Ok(())
 }
 
+/// Enforce that account creation/import has a durable password recovery strategy.
+/// HEAT_PASSWORD alone is not sufficient — it lives only in process memory.
+fn require_recovery_strategy(
+    password_file: Option<&str>,
+    password_env: Option<&str>,
+    persist_password: Option<&str>,
+) -> Result<(), HeatError> {
+    if password_file.is_some() || password_env.is_some() || persist_password.is_some() {
+        return Ok(());
+    }
+    Err(HeatError::validation(
+        "no_recovery_strategy",
+        "Account creation requires a password recovery strategy",
+    )
+    .with_hint("Use --password-file <PATH>, --password-env <VAR>, or --persist-password <PATH>"))
+}
+
+/// Validate password-related flag combinations.
+fn validate_password_flags(
+    password_file: Option<&str>,
+    password_env: Option<&str>,
+) -> Result<(), HeatError> {
+    let mut sources = 0;
+    if password_file.is_some() {
+        sources += 1;
+    }
+    if password_env.is_some() {
+        sources += 1;
+    }
+    if sources > 1 {
+        return Err(HeatError::validation(
+            "password_source_conflict",
+            "Cannot specify both --password-file and --password-env",
+        ));
+    }
+
+    Ok(())
+}
+
+/// Resolve encryption password from explicit sources, or generate one when persistence was requested.
+fn resolve_or_generate_password(
+    password_file: Option<&str>,
+    password_env: Option<&str>,
+    persist_password: Option<&str>,
+) -> Result<String, HeatError> {
+    if let Some(password) = keystore::resolve_password(password_file, password_env)? {
+        return Ok(password);
+    }
+
+    if persist_password.is_some() {
+        return Ok(generate_password());
+    }
+
+    Err(HeatError::auth("no_password", "Password required for key encryption").with_hint(
+        "Use --password-file, --password-env, set HEAT_PASSWORD, or provide --persist-password to generate one automatically",
+    ))
+}
+
+/// Persist password to a file with secure permissions (chmod 600).
+fn persist_password_file(path: &str, password: &str) -> Result<(), HeatError> {
+    let p = std::path::Path::new(path);
+    if let Some(parent) = p.parent()
+        && !parent.as_os_str().is_empty()
+    {
+        heat_core::fs::ensure_dir(parent)?;
+    }
+    heat_core::fs::atomic_write_secure(p, password.as_bytes())
+}
+
+/// Describe which recovery strategy was used (for output).
+fn describe_recovery(
+    password_file: Option<&str>,
+    password_env: Option<&str>,
+    persist_password: Option<&str>,
+    generated_password: bool,
+) -> String {
+    if let Some(path) = persist_password {
+        if generated_password {
+            return format!("generated password persisted to {path}");
+        }
+        return format!("password persisted to {path}");
+    }
+    if let Some(path) = password_file {
+        return format!("password-file {path}");
+    }
+    if let Some(var) = password_env {
+        return format!("password-env ${var}");
+    }
+    "unknown".to_string()
+}
+
+fn generate_password() -> String {
+    let mut bytes = [0u8; 24];
+    rand::rngs::OsRng.fill_bytes(&mut bytes);
+    hex::encode(bytes)
+}
+
+fn generate_evm_private_key() -> Result<Vec<u8>, HeatError> {
+    loop {
+        let mut bytes = [0u8; 32];
+        rand::rngs::OsRng.fill_bytes(&mut bytes);
+        if keystore::derive_evm_address(&bytes).is_ok() {
+            return Ok(bytes.to_vec());
+        }
+    }
+}
+
+fn generate_solana_seed() -> Vec<u8> {
+    let mut seed = [0u8; 32];
+    rand::rngs::OsRng.fill_bytes(&mut seed);
+    seed.to_vec()
+}
+
 fn io_err(e: std::io::Error) -> HeatError {
     HeatError::internal("output", format!("Failed to write output: {e}"))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn rejects_conflicting_password_sources() {
+        let err = validate_password_flags(Some("a"), Some("ENV")).unwrap_err();
+        assert_eq!(err.reason, "password_source_conflict");
+    }
+
+    #[test]
+    fn generates_password_when_persisting_without_explicit_source() {
+        let pw = resolve_or_generate_password(None, None, Some("/tmp/pw")).unwrap();
+        assert!(!pw.is_empty());
+        assert!(pw.len() >= 32);
+    }
+
+    #[test]
+    fn generated_evm_key_is_valid() {
+        let key = generate_evm_private_key().unwrap();
+        assert_eq!(key.len(), 32);
+        let addr = keystore::derive_evm_address(&key).unwrap();
+        assert!(addr.starts_with("0x"));
+    }
+
+    #[test]
+    fn generated_solana_seed_is_valid() {
+        let seed = generate_solana_seed();
+        assert_eq!(seed.len(), 32);
+        let addr = derive_solana_pubkey(&seed).unwrap();
+        assert!(!addr.is_empty());
+    }
 }

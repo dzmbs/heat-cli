@@ -88,6 +88,12 @@ pub struct Account {
     /// Default network for this account.
     #[serde(default)]
     pub default_network: Option<String>,
+    /// Optional password file path used to decrypt this account automatically.
+    #[serde(default)]
+    pub password_file: Option<String>,
+    /// Optional password environment variable name used to decrypt this account automatically.
+    #[serde(default)]
+    pub password_env: Option<String>,
     /// Protocol-specific settings.
     #[serde(default)]
     pub protocols: std::collections::HashMap<String, toml::Value>,
@@ -500,6 +506,8 @@ address = "4Nd1mBQtrMJVYVfKf2PX98YVWhMFRSNJBnLTMnCQXt4W"
             key_name: name.to_string(),
             address: None,
             default_network: None,
+            password_file: None,
+            password_env: None,
             protocols: Default::default(),
         }
     }

@@ -10,6 +10,7 @@ path = "src/main.rs"
 [dependencies]
 heat-aave = { workspace = true }
 heat-core = { workspace = true }
+heat-evm = { workspace = true }
 heat-hl = { path = "../heat-hl" }
 heat-lifi = { workspace = true }
 heat-pm = { path = "../heat-pm" }
@@ -20,3 +21,4 @@ tokio = { workspace = true }
 hex = "0.4"
 ed25519-dalek = "2"
 bs58 = "0.5"
+rand = "0.8"
