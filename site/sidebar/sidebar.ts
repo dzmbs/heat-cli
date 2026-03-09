@@ -31,9 +31,18 @@ const docs = [
     ],
   },
   {
+    text: "Aave",
+    items: [{ text: "Overview", link: "/protocols/aave" }],
+  },
+  {
+    text: "LI.FI",
+    items: [{ text: "Overview", link: "/protocols/lifi" }],
+  },
+  {
     text: "Reference",
     items: [
       { text: "Limitations", link: "/reference/limitations" },
+      { text: "v0.2.0 Release Notes", link: "/reference/v0-2-0" },
       { text: "v0.1.0 Release Notes", link: "/reference/v0-1-0" },
     ],
   },

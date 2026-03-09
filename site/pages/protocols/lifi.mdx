@@ -1,0 +1,64 @@
+# LI.FI
+
+Heat uses LI.FI as its EVM routing and bridging layer.
+
+Current publishable scope focuses on supported EVM flows across:
+
+- Ethereum
+- Polygon
+- Arbitrum
+- Base
+- Optimism where route support is available
+
+## What you can do today
+
+```bash
+heat lifi chains
+heat lifi tokens --chain ethereum
+heat lifi tools
+heat lifi quote --from-chain ethereum --to-chain arbitrum --from-token USDC --to-token USDC --amount 1000000 --from-address 0x...
+heat lifi routes --from-chain ethereum --to-chain base --from-token USDC --to-token USDC --amount 1000000 --from-address 0x...
+heat lifi bridge 100 USDC --from ethereum --to arbitrum --account main --dry-run
+heat lifi status --tx-hash 0x... --from-chain ethereum --to-chain arbitrum --bridge stargate
+```
+
+## Current scope
+
+Supported now:
+- `chains`
+- `tokens`
+- `tools`
+- `quote`
+- `routes`
+- `bridge`
+- `status`
+
+Current focus:
+- supported EVM → EVM route execution
+- Heat account / signer integration
+- explicit approval handling
+- dry-run previews and confirmations
+
+Not the current promise:
+- non-EVM execution
+- universal all-chain/all-token support
+- HyperCore flows
+
+## Safety
+
+`heat lifi bridge` is a real write path.
+
+Use:
+- `--dry-run` to preview route details first
+- `--yes` only in automation when you fully understand the route
+- small amounts first while validating your environment
+
+## Example
+
+```bash
+# Preview a bridge first
+heat lifi bridge 100 USDC --from ethereum --to base --account main --dry-run
+
+# Execute when ready
+heat lifi bridge 100 USDC --from ethereum --to base --account main
+```

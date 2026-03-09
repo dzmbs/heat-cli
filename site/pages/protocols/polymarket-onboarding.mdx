@@ -191,7 +191,17 @@ heat pm clob orders --market <condition_id>
 heat pm clob cancel-all
 ```
 
-## 10. Positions, balances, and analytics
+## 10. Monitor live account events
+
+After you are funded and approved, you can monitor live account events. Omit `--market` for all markets.
+
+```bash
+heat pm stream orders
+heat pm stream orders --market <condition_id>
+heat pm stream trades --market <condition_id>
+```
+
+## 11. Positions, balances, and analytics
 
 ```bash
 heat pm positions
@@ -257,6 +267,29 @@ Use the lower-level command trees when you need deeper protocol control:
 - `markets`, `events`, `tags`, `series`, `comments`, `profiles`, `sports`
 - `clob`
 - `data`
+- `stream`
 - `ctf`
 - `bridge`
 - `approve`
+
+## Real-time streaming
+
+After onboarding, you can stream live market data and user events.
+
+Market data streams require no account:
+
+```bash
+heat pm stream orderbook <token_id>
+heat pm stream prices <token_id>
+heat pm stream midpoints <token_id>
+```
+
+User event streams require an authenticated account. Use `--market` to filter to one market, or omit it to receive events across all markets.
+
+```bash
+heat pm stream orders
+heat pm stream orders --market <condition_id>
+heat pm stream trades --market <condition_id>
+```
+
+Streams output NDJSON by default when piped. Use `--json` or `--ndjson` for machine-readable output.

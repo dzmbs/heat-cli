@@ -1,0 +1,58 @@
+# Aave
+
+Heat supports a focused Aave V3 phase-1 integration for:
+
+- Ethereum
+- Arbitrum
+- Base
+
+## What you can do today
+
+```bash
+heat aave markets --chain ethereum
+heat aave positions --chain arbitrum --account main
+heat aave health --chain base --account main
+heat aave supply USDC 1000 --chain ethereum --account main --dry-run
+heat aave withdraw USDC 500 --chain arbitrum --account main --dry-run
+```
+
+## Current scope
+
+Supported now:
+- `markets`
+- `positions`
+- `health`
+- `supply`
+- `withdraw`
+
+Not supported yet:
+- `borrow`
+- `repay`
+- collateral toggles
+- eMode
+- rewards
+
+## Notes
+
+- Heat resolves contract addresses through Aave's `PoolAddressesProvider` at runtime.
+- Use `--dry-run` before any live write.
+- For writes, Heat uses your normal Heat account and `heat-evm` signer flow.
+
+## Example
+
+```bash
+# Inspect available reserves
+heat aave markets --chain ethereum
+
+# Check account health
+heat aave health --chain base --account main
+
+# Preview a supply transaction
+heat aave supply USDC 1000 --chain arbitrum --account main --dry-run
+```
+
+## Output
+
+- TTY defaults to pretty output
+- piped output defaults to JSON
+- `-q` / `--quiet` is useful for scalar health-factor output on `health`

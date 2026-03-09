@@ -3,7 +3,7 @@
 This guide walks through first-time setup: install Heat, create an account, understand funding, and run your first protocol commands.
 
 :::info[What is Heat?]
-Heat is a unified crypto CLI for traders, AI agents, researchers, and terminal power users. It wraps Hyperliquid and Polymarket behind a single consistent interface with machine-readable output and a strict safety model.
+Heat is a unified crypto CLI for traders, AI agents, researchers, and terminal power users. It currently supports Hyperliquid, Polymarket, Aave phase 1, and LI.FI-backed EVM bridging behind one consistent output, account, and safety model.
 :::
 
 ## 1. Install Heat
@@ -68,11 +68,12 @@ The address shown by `heat accounts get trading` is important for onboarding.
 
 - Hyperliquid funding is currently done externally to that account address.
 - Polymarket uses the same Heat account for signing, but may derive a different effective Polymarket wallet depending on signature type.
+- Aave and LI.FI use the same Heat EVM account model directly.
 
 ## 5. Understand funding today
 
-:::warning[Funding is still partly manual in v0.1]
-Heat does not yet provide a complete in-CLI bridge and funding flow across supported protocols. Humans still need to fund accounts externally, then return to Heat.
+:::warning[Funding is still partly manual in early releases]
+Heat now supports LI.FI bridging between supported EVM chains, but onboarding and protocol funding are still not fully unified. You may still need to fund accounts externally before using protocol commands.
 :::
 
 ### Hyperliquid
@@ -96,6 +97,27 @@ Current flow:
 3. check status with `heat pm bridge status`
 4. run approvals with `heat pm approve check` and `heat pm approve set`
 
+### Aave
+
+Aave does not need a special onboarding flow beyond having funds on the target EVM chain.
+
+Current flow:
+
+1. make sure your Heat EVM account has funds on Ethereum, Arbitrum, or Base
+2. inspect available reserves with `heat aave markets --chain <chain>`
+3. preview with `--dry-run` before `supply` or `withdraw`
+
+### LI.FI
+
+LI.FI is Heat's EVM bridge layer.
+
+Current flow:
+
+1. fund your source-chain Heat account
+2. preview route execution with `heat lifi bridge ... --dry-run`
+3. execute the bridge when ready
+4. check progress with `heat lifi status`
+
 ## 6. Run your first read-only commands
 
 ### Hyperliquid
@@ -114,7 +136,21 @@ heat pm markets search "election"
 heat pm price <token_id> --side buy
 ```
 
-These are safe starting points and do not require live signing.
+### Aave
+
+```bash
+heat aave markets --chain ethereum
+heat aave positions --chain arbitrum --account trading
+heat aave health --chain base --account trading
+```
+
+### LI.FI
+
+```bash
+heat lifi chains
+heat lifi tokens --chain ethereum
+heat lifi routes --from-chain ethereum --to-chain arbitrum --from-token USDC --to-token USDC --amount 1000000 --from-address 0x...
+```
 
 ## 7. Verify funded accounts
 
@@ -135,9 +171,22 @@ heat pm balance
 heat pm positions
 ```
 
+### Aave
+
+```bash
+heat aave positions --chain ethereum
+heat aave health --chain ethereum
+```
+
+### LI.FI
+
+```bash
+heat lifi bridge 100 USDC --from ethereum --to base --account trading --dry-run
+```
+
 ## 8. Preview dangerous commands first
 
-Use `--dry-run` before any action that could move money or place an order.
+Use `--dry-run` before any action that could move money, place an order, bridge funds, or execute a lending action.
 
 ### Hyperliquid
 
@@ -151,13 +200,25 @@ heat hl buy ETH 0.1 --price 3500 --dry-run
 heat pm buy <token_id> --price 0.55 --size 100 --dry-run
 ```
 
+### Aave
+
+```bash
+heat aave supply USDC 1000 --chain ethereum --account trading --dry-run
+```
+
+### LI.FI
+
+```bash
+heat lifi bridge 100 USDC --from ethereum --to arbitrum --account trading --dry-run
+```
+
 ## 9. Agent workflow guidance
 
 If you are building an agent on top of Heat, use this pattern:
 
 1. resolve or confirm the active account
 2. inspect addresses and balances
-3. if funding is missing, ask the human to fund externally
+3. if funding is missing, ask the human to fund externally or bridge with LI.FI if appropriate
 4. re-check balances or deposit status
 5. use `--dry-run` before proposing a live action
 6. require explicit confirmation before real-money writes
@@ -168,7 +229,11 @@ If you are building an agent on top of Heat, use this pattern:
 
 ### Recommended agent wording for Polymarket
 
-> Your Heat account is configured, but Heat does not yet move funds on your behalf. Please send funds to the deposit address returned by `heat pm bridge deposit`, then tell me when to continue.
+> Your Heat account is configured, but Heat does not yet move funds on your behalf into Polymarket directly. Please send funds to the deposit address returned by `heat pm bridge deposit`, then tell me when to continue.
+
+### Recommended agent wording for LI.FI
+
+> I can bridge supported EVM assets with `heat lifi bridge`, but I will first show you a dry-run preview and wait for explicit confirmation before executing.
 
 ## 10. Account resolution order
 
@@ -187,6 +252,8 @@ If none are set, commands that require an account fail with an auth error and a 
 - [Hyperliquid Onboarding](/protocols/hyperliquid-onboarding)
 - [Polymarket Overview](/protocols/polymarket)
 - [Polymarket Onboarding](/protocols/polymarket-onboarding)
+- [Aave Overview](/protocols/aave)
+- [LI.FI Overview](/protocols/lifi)
 - [Accounts](/core/accounts)
 - [Output Modes](/core/output)
 - [Safety](/core/safety)

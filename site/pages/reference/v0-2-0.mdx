@@ -1,6 +1,6 @@
-# Heat CLI v0.1.0
+# Heat CLI v0.2.0
 
-This page preserves the original narrower release scope before Aave and LI.FI were added to the public release story.
+Heat v0.2.0 is the first broader multi-protocol release of Heat.
 
 ## Supported protocols
 
@@ -40,21 +40,30 @@ This page preserves the original narrower release scope before Aave and LI.FI we
 - `status`
 - supported EVM bridge execution through Heat accounts
 
-## Key features
+## What defines this release
 
-- **Account-first model** — encrypted V3 keystore (scrypt + AES-128-CTR)
-- **Pipe-aware output** — TTY gets pretty output, piped output gets JSON; `--json`, `--quiet`, and `--output ndjson` are available where appropriate
-- **Safety-first** — `--dry-run`, TTY confirmation prompts for dangerous writes, `--yes` for automation
-- **Shared infrastructure** — unified error model, config layering, semantic exit codes
-- **Shared EVM substrate** — common chain/RPC/signer/approval helpers across Aave and LI.FI
+Heat now ships as a practical product around four connected workflow areas:
+
+- **trading** — Hyperliquid and Polymarket
+- **lending** — Aave phase 1
+- **capital movement** — LI.FI-backed EVM bridging
+- **shared execution model** — one account/safety/output contract across protocols
+
+## Shared foundations
+
+- account-first model with encrypted V3 keystore
+- pipe-aware output (`pretty`, `json`, `ndjson`, `quiet`)
+- safety-first writes with `--dry-run`, TTY confirmation, and `--yes`
+- shared EVM substrate for chain/RPC/signer/approval handling
+- protocol-first CLI shape with Heat-owned output contracts
 
 ## Current boundaries
 
 - Hyperliquid funding remains external/manual
 - Polymarket funding remains partly external/manual
-- Aave is not full-surface yet (`borrow`/`repay` deferred)
+- Aave does not include `borrow`/`repay` yet
 - LI.FI is focused on supported EVM routing/bridging, not non-EVM execution
-- Local encrypted keys only; no hardware wallet support yet
+- local encrypted keys only; no hardware wallet support yet
 
 ## Example commands
 

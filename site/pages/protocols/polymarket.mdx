@@ -23,8 +23,9 @@ Read-only discovery commands do not need a signing account:
 - `sports`
 - `status`
 - read-only `clob` pricing and book commands
+- `stream orderbook`, `stream prices`, `stream midpoints`
 
-Trading, account, approval, and on-chain commands do.
+Trading, account, approval, on-chain, and user stream commands do.
 
 ## Funding
 
@@ -178,6 +179,37 @@ heat pm sports teams
 ```bash
 heat pm status
 ```
+
+## Streaming
+
+Real-time WebSocket streams for market data and user events.
+
+### Market data streams (no account required)
+
+These subscribe by token/asset ID and emit events as they happen.
+
+```bash
+heat pm stream orderbook <token_id>
+heat pm stream prices <token_id>
+heat pm stream midpoints <token_id>
+```
+
+### User streams (requires account)
+
+These subscribe to your authenticated order and trade events. Omit `--market` to receive events across all markets.
+
+```bash
+heat pm stream orders
+heat pm stream orders --market <condition_id>
+heat pm stream trades
+heat pm stream trades --market <condition_id>
+```
+
+Optional `--sig-type` overrides the Polymarket signature type.
+
+:::info[Machine output]
+Streams emit NDJSON (one JSON object per line). Use `--json` or `--ndjson` for machine consumption. `--quiet` is not supported for streams.
+:::
 
 ## CLOB
 
