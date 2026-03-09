@@ -1,0 +1,41 @@
+[package]
+name = "heat-solana"
+version.workspace = true
+edition.workspace = true
+description = "Shared Solana substrate helpers for Heat CLI protocol crates"
+
+[dependencies]
+heat-core = { path = "../heat-core" }
+
+# Granular Solana crates (Anza 2.x restructuring — lighter than monolithic solana-sdk)
+solana-pubkey   = { version = "2.2", features = ["std"] }
+solana-keypair  = { version = "2.2" }
+solana-hash     = { version = "2.2" }
+solana-signature = { version = "2.2" }
+solana-transaction = { version = "2.2" }
+solana-message  = { version = "2.2" }
+solana-instruction = { version = "2.2" }
+solana-account-decoder = { version = "2.2", optional = true }
+
+# RPC client
+solana-rpc-client          = { version = "2.2", default-features = false, features = ["spinner"] }
+solana-rpc-client-api      = { version = "2.2" }
+
+# SPL
+spl-token                  = { version = "6", default-features = false, features = ["no-entrypoint"] }
+spl-associated-token-account = { version = "4", default-features = false, features = ["no-entrypoint"] }
+
+# Secret zeroization
+zeroize            = "1"
+
+# Encoding / parsing
+bs58               = "0.5"
+
+# Async runtime
+tokio = { workspace = true }
+
+# Serialization (for config value extraction)
+serde = { workspace = true }
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["macros", "rt"] }

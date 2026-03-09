@@ -20,5 +20,3 @@ uuid = { version = "1", features = ["v4"] }
 zeroize = { version = "1", features = ["derive"] }
 k256 = "0.13"
 
-# misc
-atty = "0.2"

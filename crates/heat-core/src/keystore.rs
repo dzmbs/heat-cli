@@ -57,7 +57,14 @@ pub struct KdfParams {
 
 /// Encrypt a private key and save to ~/.heat/keys/<name>.json
 /// Fails if a key with this name already exists.
-pub fn save_key(name: &str, private_key: &[u8], password: &[u8]) -> Result<(), HeatError> {
+/// `derived_address` is the pre-computed public identity to cache in the keystore.
+/// Pass `None` if the address is not known at creation time.
+pub fn save_key(
+    name: &str,
+    private_key: &[u8],
+    password: &[u8],
+    derived_address: Option<&str>,
+) -> Result<(), HeatError> {
     if private_key.len() != KEY_LEN {
         return Err(HeatError::validation(
             "invalid_key_length",
@@ -77,10 +84,8 @@ pub fn save_key(name: &str, private_key: &[u8], password: &[u8]) -> Result<(), H
     }
 
     let mut keystore = encrypt(private_key, password)?;
-    // Store address in keystore (lowercase hex without 0x, V3 convention)
-    if let Ok(addr) = derive_evm_address(private_key) {
-        keystore.address = Some(addr.strip_prefix("0x").unwrap_or(&addr).to_string());
-    }
+    // Store address in keystore — family-specific derivation handled by caller.
+    keystore.address = derived_address.map(|a| a.to_string());
     let json = serde_json::to_string_pretty(&keystore).map_err(|e| {
         HeatError::internal(
             "keystore_serialize",

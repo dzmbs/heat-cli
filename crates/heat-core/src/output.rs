@@ -1,6 +1,6 @@
 use crate::error::HeatError;
 use serde::Serialize;
-use std::io::{self, Write};
+use std::io::{self, IsTerminal, Write};
 
 /// Output format — stable contract.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -41,7 +41,7 @@ impl OutputFormat {
             return Self::from_flags(json, output, quiet);
         }
         // No explicit flag — auto-detect based on TTY
-        if atty::is(atty::Stream::Stdout) {
+        if std::io::stdout().is_terminal() {
             Ok(Self::Pretty)
         } else {
             Ok(Self::Json)
@@ -59,7 +59,7 @@ impl Output {
     pub fn new(format: OutputFormat) -> Self {
         Self {
             format,
-            is_tty: atty::is(atty::Stream::Stdout),
+            is_tty: std::io::stdout().is_terminal(),
         }
     }
 

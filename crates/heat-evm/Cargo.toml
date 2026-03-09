@@ -1,0 +1,20 @@
+[package]
+name = "heat-evm"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+heat-core = { workspace = true }
+tokio = { workspace = true }
+
+# Alloy EVM stack
+alloy = { version = "1.5", features = [
+    "providers",
+    "signers",
+    "signer-local",
+    "contract",
+    "sol-types",
+    "transports",
+    "transport-http",
+    "rpc-types",
+] }
