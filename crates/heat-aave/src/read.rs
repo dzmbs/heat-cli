@@ -6,13 +6,11 @@
 use alloy::primitives::{Address, U256};
 use alloy::providers::Provider;
 use heat_core::error::HeatError;
-use heat_evm::amount::format_units;
 use heat_evm::EvmChain;
+use heat_evm::amount::format_units;
 
 use crate::contracts::{IPool, IPoolDataProvider};
-use crate::dto::{
-    HealthDto, MarketDto, MarketsListDto, PositionDto, PositionsListDto,
-};
+use crate::dto::{HealthDto, MarketDto, MarketsListDto, PositionDto, PositionsListDto};
 use crate::resolver::ResolvedAddresses;
 
 // ---------------------------------------------------------------------------
@@ -58,50 +56,48 @@ pub async fn fetch_markets(
                         .getReserveConfigurationData(asset)
                         .call()
                         .await
-                        .map_err(|e| HeatError::network(
-                            "aave_reserve_config",
-                            format!("Failed to fetch config for {symbol}: {e}"),
-                        ))
+                        .map_err(|e| {
+                            HeatError::network(
+                                "aave_reserve_config",
+                                format!("Failed to fetch config for {symbol}: {e}"),
+                            )
+                        })
                 },
                 async {
-                    dp_clone
-                        .getReserveData(asset)
-                        .call()
-                        .await
-                        .map_err(|e| HeatError::network(
+                    dp_clone.getReserveData(asset).call().await.map_err(|e| {
+                        HeatError::network(
                             "aave_reserve_data",
                             format!("Failed to fetch data for {symbol}: {e}"),
-                        ))
+                        )
+                    })
                 },
                 async {
-                    dp_clone
-                        .getReserveCaps(asset)
-                        .call()
-                        .await
-                        .map_err(|e| HeatError::network(
+                    dp_clone.getReserveCaps(asset).call().await.map_err(|e| {
+                        HeatError::network(
                             "aave_reserve_caps",
                             format!("Failed to fetch caps for {symbol}: {e}"),
-                        ))
+                        )
+                    })
                 },
                 async {
-                    dp_clone
-                        .getPaused(asset)
-                        .call()
-                        .await
-                        .map_err(|e| HeatError::network(
+                    dp_clone.getPaused(asset).call().await.map_err(|e| {
+                        HeatError::network(
                             "aave_reserve_paused",
                             format!("Failed to fetch paused for {symbol}: {e}"),
-                        ))
+                        )
+                    })
                 },
                 async {
                     dp_clone
                         .getReserveTokensAddresses(asset)
                         .call()
                         .await
-                        .map_err(|e| HeatError::network(
-                            "aave_reserve_tokens_addrs",
-                            format!("Failed to fetch token addresses for {symbol}: {e}"),
-                        ))
+                        .map_err(|e| {
+                            HeatError::network(
+                                "aave_reserve_tokens_addrs",
+                                format!("Failed to fetch token addresses for {symbol}: {e}"),
+                            )
+                        })
                 },
             )?;
 
@@ -186,20 +182,24 @@ pub async fn fetch_positions(
                         .getUserReserveData(asset, user)
                         .call()
                         .await
-                        .map_err(|e| HeatError::network(
-                            "aave_user_reserve",
-                            format!("Failed to fetch user data for {symbol}: {e}"),
-                        ))
+                        .map_err(|e| {
+                            HeatError::network(
+                                "aave_user_reserve",
+                                format!("Failed to fetch user data for {symbol}: {e}"),
+                            )
+                        })
                 },
                 async {
                     dp_clone2
                         .getReserveConfigurationData(asset)
                         .call()
                         .await
-                        .map_err(|e| HeatError::network(
-                            "aave_reserve_config",
-                            format!("Failed to fetch config for {symbol}: {e}"),
-                        ))
+                        .map_err(|e| {
+                            HeatError::network(
+                                "aave_reserve_config",
+                                format!("Failed to fetch config for {symbol}: {e}"),
+                            )
+                        })
                 },
             )?;
 
@@ -256,16 +256,12 @@ pub async fn fetch_health(
 ) -> Result<HealthDto, HeatError> {
     let pool = IPool::new(resolved.pool, &provider);
 
-    let data = pool
-        .getUserAccountData(user)
-        .call()
-        .await
-        .map_err(|e| {
-            HeatError::network(
-                "aave_user_account",
-                format!("Failed to fetch user account data: {e}"),
-            )
-        })?;
+    let data = pool.getUserAccountData(user).call().await.map_err(|e| {
+        HeatError::network(
+            "aave_user_account",
+            format!("Failed to fetch user account data: {e}"),
+        )
+    })?;
 
     // Health factor is WAD-scaled (1e18). Format as human-readable.
     let hf_display = if data.healthFactor == U256::MAX {
@@ -280,10 +276,7 @@ pub async fn fetch_health(
         total_collateral_base: data.totalCollateralBase.to_string(),
         total_debt_base: data.totalDebtBase.to_string(),
         available_borrows_base: data.availableBorrowsBase.to_string(),
-        liquidation_threshold_bps: data
-            .currentLiquidationThreshold
-            .try_into()
-            .unwrap_or(0),
+        liquidation_threshold_bps: data.currentLiquidationThreshold.try_into().unwrap_or(0),
         ltv_bps: data.ltv.try_into().unwrap_or(0),
         health_factor: data.healthFactor.to_string(),
         health_factor_display: hf_display,

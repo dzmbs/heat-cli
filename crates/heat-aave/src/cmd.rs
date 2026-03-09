@@ -14,10 +14,7 @@ use heat_core::safety::DryRunPreview;
 use heat_evm::EvmChain;
 
 use crate::addresses;
-use crate::dto::{
-    HealthDto, MarketsListDto, PositionsListDto,
-    SupplyResultDto, WithdrawResultDto,
-};
+use crate::dto::{HealthDto, MarketsListDto, PositionsListDto, SupplyResultDto, WithdrawResultDto};
 use crate::resolver;
 
 // ---------------------------------------------------------------------------
@@ -121,15 +118,10 @@ pub struct WithdrawArgs {
 
 /// Resolve chain from --chain flag, falling back to ctx.network (global --network).
 pub(crate) fn resolve_chain(explicit: Option<&str>, ctx: &Ctx) -> Result<EvmChain, HeatError> {
-    let name = explicit
-        .or(ctx.network.as_deref())
-        .ok_or_else(|| {
-            HeatError::validation(
-                "no_chain",
-                "No chain specified",
-            )
+    let name = explicit.or(ctx.network.as_deref()).ok_or_else(|| {
+        HeatError::validation("no_chain", "No chain specified")
             .with_hint("Use --chain <NAME> or set a default network with 'heat config' / --network")
-        })?;
+    })?;
     EvmChain::from_name(name)
 }
 
@@ -383,10 +375,7 @@ fn pretty_positions(dto: &PositionsListDto) -> String {
         );
     }
 
-    let mut out = format!(
-        "Aave V3 Positions on {} for {}\n\n",
-        dto.chain, dto.account
-    );
+    let mut out = format!("Aave V3 Positions on {} for {}\n\n", dto.chain, dto.account);
     out.push_str(&format!(
         "{:<8} {:<18} {:<18} {:<18} {:<5}\n",
         "SYMBOL", "SUPPLIED", "STABLE DEBT", "VAR DEBT", "COLL"
@@ -436,7 +425,11 @@ fn pretty_supply(dto: &SupplyResultDto) -> String {
          Account: {}\n\
          Asset:   {} ({})\n\
          Tx:      {}",
-        dto.amount_display, dto.chain, dto.account, dto.asset_symbol, dto.asset_address,
+        dto.amount_display,
+        dto.chain,
+        dto.account,
+        dto.asset_symbol,
+        dto.asset_address,
         dto.tx_hash,
     );
     if let Some(approval) = &dto.approval_tx_hash {

@@ -167,10 +167,7 @@ fn map_step(raw: &RawStep) -> StepDto {
 // Route
 // ---------------------------------------------------------------------------
 
-fn map_route(
-    raw: &RawRoute,
-    chain_types: &std::collections::HashMap<u64, String>,
-) -> RouteDto {
+fn map_route(raw: &RawRoute, chain_types: &std::collections::HashMap<u64, String>) -> RouteDto {
     let mut dto = RouteDto {
         id: raw.id.clone(),
         from_chain_id: raw.from_chain_id,
@@ -200,7 +197,11 @@ pub fn map_routes(
     chain_types: &std::collections::HashMap<u64, String>,
 ) -> RoutesListDto {
     RoutesListDto {
-        routes: resp.routes.iter().map(|r| map_route(r, chain_types)).collect(),
+        routes: resp
+            .routes
+            .iter()
+            .map(|r| map_route(r, chain_types))
+            .collect(),
         from_chain_id: params_summary.from_chain_id,
         to_chain_id: params_summary.to_chain_id,
         from_token: params_summary.from_token,

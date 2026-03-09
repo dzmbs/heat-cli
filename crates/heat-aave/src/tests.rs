@@ -47,7 +47,8 @@ fn market_addresses_are_unique_per_chain() {
         for i in 0..addrs.len() {
             for j in (i + 1)..addrs.len() {
                 assert_ne!(
-                    addrs[i], addrs[j],
+                    addrs[i],
+                    addrs[j],
                     "Duplicate address on {} at indices {i} and {j}",
                     market.chain.canonical_name()
                 );
@@ -322,8 +323,15 @@ fn resolve_chain_from_explicit() {
     use heat_core::config::HeatConfig;
     use heat_core::ctx::Ctx;
     use heat_core::output::OutputFormat;
-    let ctx = Ctx::new(OutputFormat::Json, HeatConfig::default(), None, None, false, false)
-        .expect("test ctx");
+    let ctx = Ctx::new(
+        OutputFormat::Json,
+        HeatConfig::default(),
+        None,
+        None,
+        false,
+        false,
+    )
+    .expect("test ctx");
     let chain = crate::cmd::resolve_chain(Some("ethereum"), &ctx).unwrap();
     assert_eq!(chain, EvmChain::Ethereum);
 }
@@ -371,8 +379,15 @@ fn resolve_chain_no_chain_no_network_errors() {
     use heat_core::config::HeatConfig;
     use heat_core::ctx::Ctx;
     use heat_core::output::OutputFormat;
-    let ctx = Ctx::new(OutputFormat::Json, HeatConfig::default(), None, None, false, false)
-        .expect("test ctx");
+    let ctx = Ctx::new(
+        OutputFormat::Json,
+        HeatConfig::default(),
+        None,
+        None,
+        false,
+        false,
+    )
+    .expect("test ctx");
     let err = crate::cmd::resolve_chain(None, &ctx).unwrap_err();
     assert_eq!(err.reason, "no_chain");
     assert!(err.hint.is_some());

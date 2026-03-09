@@ -216,10 +216,11 @@ fn create(
             ));
         }
         (None, None) => {
-            return Err(
-                HeatError::validation("no_key", "Either --key or --key-file must be provided")
-                    .with_hint("Use --key-file to avoid exposing the key in process list"),
-            );
+            return Err(HeatError::validation(
+                "no_key",
+                "Either --key or --key-file must be provided",
+            )
+            .with_hint("Use --key-file to avoid exposing the key in process list"));
         }
     };
     let key_input = key_input.as_str();
@@ -265,7 +266,9 @@ fn create(
                             "keypair_mismatch",
                             "Public key half of keypair does not match derived public key",
                         )
-                        .with_hint("The last 32 bytes of a 64-byte keypair must be the Ed25519 public key"));
+                        .with_hint(
+                            "The last 32 bytes of a 64-byte keypair must be the Ed25519 public key",
+                        ));
                     }
                     seed
                 }
@@ -369,16 +372,16 @@ fn import(
                     "keypair_mismatch",
                     "Public key half of keypair does not match derived public key",
                 )
-                .with_hint("The last 32 bytes of a 64-byte keypair must be the Ed25519 public key"));
+                .with_hint(
+                    "The last 32 bytes of a 64-byte keypair must be the Ed25519 public key",
+                ));
             }
 
             // Encrypt the 32-byte seed into Heat's keystore format
             let password =
                 keystore::resolve_password(password_file, password_env)?.ok_or_else(|| {
                     HeatError::auth("no_password", "Password required for key encryption")
-                        .with_hint(
-                            "Use --password-file, --password-env, or set HEAT_PASSWORD",
-                        )
+                        .with_hint("Use --password-file, --password-env, or set HEAT_PASSWORD")
                 })?;
             keystore::save_key(name, seed, password.as_bytes(), Some(&address))?;
 

@@ -4,7 +4,7 @@
 /// is the canonical entrypoint — Pool and helper addresses can be resolved
 /// dynamically from it at runtime, but we store well-known addresses for
 /// validation and offline tests.
-use alloy::primitives::{address, Address};
+use alloy::primitives::{Address, address};
 use heat_core::error::HeatError;
 use heat_evm::EvmChain;
 

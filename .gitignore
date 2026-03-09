@@ -24,9 +24,10 @@ site/.vocs/
 
 # Internal planning docs (not for public release)
 PLAN.md
-ROADMAP.md
 CHECKLIST.md
 CLAUDE.md
 REVIEW_GUIDE.md
 UPSTREAM.md
 RESEARCH.md
+*_IMPLEMENTATION_BRIEF.md
+SUBSTRATE_PARALLEL_IMPLEMENTATION.md

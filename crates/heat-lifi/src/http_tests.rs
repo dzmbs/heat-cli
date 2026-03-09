@@ -561,7 +561,10 @@ async fn step_transaction_without_from_address_fails_mock() {
     });
 
     let result = client.step_transaction(&step_json).await;
-    assert!(result.is_err(), "stepTransaction without fromAddress should fail");
+    assert!(
+        result.is_err(),
+        "stepTransaction without fromAddress should fail"
+    );
 }
 
 // ---------------------------------------------------------------------------

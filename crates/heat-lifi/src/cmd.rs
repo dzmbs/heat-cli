@@ -428,9 +428,15 @@ async fn bridge(args: BridgeArgs, ctx: &Ctx) -> Result<(), HeatError> {
         DryRunPreview::new("lifi", "bridge")
             .param("from", from_chain.canonical_name())
             .param("to", to_chain.canonical_name())
-            .param("token", &format!("{} ({})", from_token_symbol, from_token_addr))
+            .param(
+                "token",
+                &format!("{} ({})", from_token_symbol, from_token_addr),
+            )
             .param("amount", &amount_display)
-            .param("route", &format!("{} (index {})", selected_route.id, route_idx))
+            .param(
+                "route",
+                &format!("{} (index {})", selected_route.id, route_idx),
+            )
             .param("steps", &selected_route.steps.len().to_string())
             .param("tools", &tools_used.join(", "))
             .param("estimated output", &selected_route.to_amount)
@@ -448,7 +454,8 @@ async fn bridge(args: BridgeArgs, ctx: &Ctx) -> Result<(), HeatError> {
     ))?;
 
     // 11. Build wallet provider for source chain.
-    let rpc_url = heat_evm::rpc::resolve_rpc_url(ctx, from_chain, args.rpc.as_deref(), Some("lifi"))?;
+    let rpc_url =
+        heat_evm::rpc::resolve_rpc_url(ctx, from_chain, args.rpc.as_deref(), Some("lifi"))?;
     let wallet_prov = heat_evm::wallet_provider(ctx, from_chain, &rpc_url).await?;
 
     // 12. Re-fetch raw routes to get raw step data for stepTransaction API.
@@ -512,9 +519,7 @@ async fn bridge(args: BridgeArgs, ctx: &Ctx) -> Result<(), HeatError> {
                     from_chain.canonical_name(),
                 ),
             )
-            .with_hint(
-                "Multi-chain step execution is not yet supported. Try a simpler route.",
-            ));
+            .with_hint("Multi-chain step execution is not yet supported. Try a simpler route."));
         }
 
         // Handle ERC-20 approval if needed.
@@ -524,7 +529,10 @@ async fn bridge(args: BridgeArgs, ctx: &Ctx) -> Result<(), HeatError> {
                 step_tx.action.from_token.address.parse().map_err(|_| {
                     HeatError::protocol(
                         "invalid_token_address",
-                        format!("Invalid token address in step: {}", step_tx.action.from_token.address),
+                        format!(
+                            "Invalid token address in step: {}",
+                            step_tx.action.from_token.address
+                        ),
                     )
                 })?;
 
@@ -534,13 +542,12 @@ async fn bridge(args: BridgeArgs, ctx: &Ctx) -> Result<(), HeatError> {
                     == "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee";
 
             if !is_native {
-                let spender: alloy::primitives::Address =
-                    approval_addr.parse().map_err(|_| {
-                        HeatError::protocol(
-                            "invalid_approval_address",
-                            format!("Invalid approval address: {approval_addr}"),
-                        )
-                    })?;
+                let spender: alloy::primitives::Address = approval_addr.parse().map_err(|_| {
+                    HeatError::protocol(
+                        "invalid_approval_address",
+                        format!("Invalid approval address: {approval_addr}"),
+                    )
+                })?;
 
                 let amount_to_approve: alloy::primitives::U256 =
                     step_tx.action.from_amount.parse().map_err(|_| {
@@ -550,13 +557,9 @@ async fn bridge(args: BridgeArgs, ctx: &Ctx) -> Result<(), HeatError> {
                         )
                     })?;
 
-                let current_allowance = heat_evm::erc20::allowance(
-                    &wallet_prov,
-                    from_token_address,
-                    sender,
-                    spender,
-                )
-                .await?;
+                let current_allowance =
+                    heat_evm::erc20::allowance(&wallet_prov, from_token_address, sender, spender)
+                        .await?;
 
                 if current_allowance < amount_to_approve {
                     ctx.output.diagnostic(&format!(
@@ -570,8 +573,7 @@ async fn bridge(args: BridgeArgs, ctx: &Ctx) -> Result<(), HeatError> {
                         amount_to_approve,
                     )
                     .await?;
-                    ctx.output
-                        .diagnostic(&format!("Approval tx: {tx_hash:#x}"));
+                    ctx.output.diagnostic(&format!("Approval tx: {tx_hash:#x}"));
                     approval_tx_hash = Some(format!("{tx_hash:#x}"));
                 }
             }
@@ -606,7 +608,10 @@ async fn bridge(args: BridgeArgs, ctx: &Ctx) -> Result<(), HeatError> {
         if let Some(gas_limit) = &step_tx.transaction_request.gas_limit {
             let gl = parse_value_flexible(gas_limit)?;
             let gl_u64: u64 = gl.try_into().map_err(|_| {
-                HeatError::protocol("invalid_gas_limit", format!("Gas limit too large: {gas_limit}"))
+                HeatError::protocol(
+                    "invalid_gas_limit",
+                    format!("Gas limit too large: {gas_limit}"),
+                )
             })?;
             tx_request = tx_request.gas_limit(gl_u64);
         }
@@ -689,9 +694,7 @@ pub(crate) fn resolve_chain_id(input: &str) -> Result<u64, HeatError> {
             "invalid_chain",
             format!("'{input}' is not a valid chain name or numeric chain ID"),
         )
-        .with_hint(
-            "Use a chain name (ethereum, polygon, arbitrum, base, optimism) or numeric ID",
-        )
+        .with_hint("Use a chain name (ethereum, polygon, arbitrum, base, optimism) or numeric ID")
     })
 }
 
@@ -737,9 +740,7 @@ async fn resolve_token(
             "unknown_token",
             format!("No token with symbol '{trimmed}' found on chain {chain_id}"),
         )
-        .with_hint(
-            "Use the exact symbol (e.g., USDC, WETH, DAI) or pass the token address",
-        )),
+        .with_hint("Use the exact symbol (e.g., USDC, WETH, DAI) or pass the token address")),
         1 => {
             let t = matched[0];
             Ok((t.address.clone(), t.symbol.clone(), t.decimals))
@@ -982,17 +983,25 @@ fn pretty_bridge(dto: &BridgeResultDto) -> String {
 /// Validate that an amount string is a non-empty, non-negative integer (base-unit amount).
 pub(crate) fn validate_amount(input: &str) -> Result<(), HeatError> {
     if input.is_empty() {
-        return Err(HeatError::validation("empty_amount", "Amount must not be empty"));
+        return Err(HeatError::validation(
+            "empty_amount",
+            "Amount must not be empty",
+        ));
     }
     if input.starts_with('-') {
-        return Err(HeatError::validation("negative_amount", "Amount must not be negative"));
+        return Err(HeatError::validation(
+            "negative_amount",
+            "Amount must not be negative",
+        ));
     }
     if !input.chars().all(|c| c.is_ascii_digit()) {
         return Err(HeatError::validation(
             "invalid_amount",
             format!("Amount must be a non-negative integer in base units, got '{input}'"),
         )
-        .with_hint("Pass the amount in the smallest token unit (e.g. wei for ETH, lamports for SOL)"));
+        .with_hint(
+            "Pass the amount in the smallest token unit (e.g. wei for ETH, lamports for SOL)",
+        ));
     }
     if input.len() > 1 && input.starts_with('0') {
         return Err(HeatError::validation(

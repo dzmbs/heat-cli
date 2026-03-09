@@ -447,7 +447,10 @@ mod tests {
         let route = evm_route(999999, 1);
         let support = classify_route_with_chain_types(&route, &chain_types);
         assert_eq!(support.family, ExecutionFamily::Evm);
-        assert!(!support.supported, "non-Heat EVM chain should not be marked supported");
+        assert!(
+            !support.supported,
+            "non-Heat EVM chain should not be marked supported"
+        );
     }
 
     #[test]
@@ -469,7 +472,13 @@ mod tests {
         let support = classify_route(&route);
         assert_eq!(support.family, ExecutionFamily::Evm);
         assert!(!support.supported);
-        assert!(support.reason.as_ref().unwrap().contains("not yet supported by Heat"));
+        assert!(
+            support
+                .reason
+                .as_ref()
+                .unwrap()
+                .contains("not yet supported by Heat")
+        );
     }
 
     #[test]
@@ -478,7 +487,13 @@ mod tests {
         let route = evm_route(1, 56);
         let support = classify_route(&route);
         assert!(!support.supported);
-        assert!(support.reason.as_ref().unwrap().contains("not yet supported by Heat"));
+        assert!(
+            support
+                .reason
+                .as_ref()
+                .unwrap()
+                .contains("not yet supported by Heat")
+        );
     }
 
     #[test]

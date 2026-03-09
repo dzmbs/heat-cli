@@ -270,13 +270,17 @@ pub struct LifiClient {
 
 impl LifiClient {
     pub fn new() -> Result<Self, HeatError> {
-        let api_key = std::env::var("HEAT_LIFI_API_KEY").ok().filter(|s| !s.is_empty());
+        let api_key = std::env::var("HEAT_LIFI_API_KEY")
+            .ok()
+            .filter(|s| !s.is_empty());
         let client = reqwest::Client::builder()
             .user_agent("heat-cli/0.1")
             .connect_timeout(std::time::Duration::from_secs(10))
             .timeout(std::time::Duration::from_secs(30))
             .build()
-            .map_err(|e| HeatError::internal("http_client", format!("Failed to build HTTP client: {e}")))?;
+            .map_err(|e| {
+                HeatError::internal("http_client", format!("Failed to build HTTP client: {e}"))
+            })?;
         Ok(Self {
             base_url: LIFI_BASE_URL.to_owned(),
             client,
@@ -292,7 +296,9 @@ impl LifiClient {
             .connect_timeout(std::time::Duration::from_secs(10))
             .timeout(std::time::Duration::from_secs(30))
             .build()
-            .map_err(|e| HeatError::internal("http_client", format!("Failed to build HTTP client: {e}")))?;
+            .map_err(|e| {
+                HeatError::internal("http_client", format!("Failed to build HTTP client: {e}"))
+            })?;
         Ok(Self {
             base_url: base_url.into(),
             client,

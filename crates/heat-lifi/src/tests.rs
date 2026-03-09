@@ -715,7 +715,10 @@ fn native_zero_address_skips_approval() {
     // The zero address is a native token — approval should be skipped.
     let addr = "0x0000000000000000000000000000000000000000";
     let parsed: alloy::primitives::Address = addr.parse().unwrap();
-    assert!(parsed.is_zero(), "zero address should be detected as native");
+    assert!(
+        parsed.is_zero(),
+        "zero address should be detected as native"
+    );
 }
 
 #[test]
@@ -734,8 +737,8 @@ fn erc20_address_requires_approval() {
     // A non-zero, non-placeholder address is an ERC20 token.
     let addr = "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48";
     let parsed: alloy::primitives::Address = addr.parse().unwrap();
-    let is_native = parsed.is_zero()
-        || addr.to_lowercase() == "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee";
+    let is_native =
+        parsed.is_zero() || addr.to_lowercase() == "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee";
     assert!(!is_native, "USDC address should require approval");
 }
 
