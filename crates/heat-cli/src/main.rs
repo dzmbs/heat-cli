@@ -5,6 +5,7 @@ use heat_core::error::HeatError;
 use heat_core::output::OutputFormat;
 
 mod cmd_accounts;
+mod cmd_wallet;
 
 #[derive(Parser)]
 #[command(name = "heat", about = "Unified crypto CLI for humans and agents")]
@@ -61,6 +62,9 @@ enum Command {
     #[command(alias = "pm")]
     Polymarket(heat_pm::cmd::PmCmd),
 
+    /// Wallet operations (balances, cross-chain views)
+    Wallet(cmd_wallet::WalletCmd),
+
     /// Show current configuration
     Config,
 }
@@ -115,6 +119,7 @@ async fn run(command: Command, ctx: &Ctx) -> Result<(), HeatError> {
         Command::Hl(cmd) => heat_hl::cmd::run(cmd, ctx).await,
         Command::Lifi(cmd) => heat_lifi::cmd::run(cmd, ctx).await,
         Command::Polymarket(cmd) => heat_pm::cmd::run(cmd, ctx).await,
+        Command::Wallet(cmd) => cmd_wallet::run(cmd, ctx).await,
         Command::Config => cmd_config(ctx),
     }
 }

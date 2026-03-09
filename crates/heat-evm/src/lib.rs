@@ -17,6 +17,7 @@
 //! `heat-core` MUST NOT depend on `heat-evm`.
 
 pub mod amount;
+pub mod balance;
 pub mod chains;
 pub mod erc20;
 pub mod parse;
