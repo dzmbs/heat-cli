@@ -14,6 +14,8 @@ use polymarket_client_sdk::gamma::types::request::{
     TagBySlugRequest, TagsRequest, TeamsRequest,
 };
 use polymarket_client_sdk::types::Address;
+use serde::Serialize;
+use std::collections::HashSet;
 
 fn gamma_client() -> gamma::Client {
     gamma::Client::default()
@@ -32,6 +34,122 @@ fn parse_address(s: &str) -> Result<Address, HeatError> {
         .map_err(|e| HeatError::internal("address_parse", format!("Invalid address '{s}': {e}")))
 }
 
+// ── Heat-owned Market DTO ──────────────────────────────────────────────────
+
+/// Normalized market representation. All money fields are strings.
+#[derive(Debug, Serialize)]
+struct MarketDto {
+    condition_id: String,
+    question: String,
+    slug: String,
+    active: bool,
+    closed: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    yes_price: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    no_price: Option<String>,
+    volume: String,
+    liquidity: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    end_date: Option<String>,
+}
+
+impl MarketDto {
+    fn from_sdk(m: &polymarket_client_sdk::gamma::types::response::Market) -> Self {
+        let prices = m.outcome_prices.as_ref();
+        let yes_price = prices.and_then(|p| p.first()).map(|d| d.to_string());
+        let no_price = prices.and_then(|p| p.get(1)).map(|d| d.to_string());
+        Self {
+            condition_id: m.condition_id.map(|c| format!("{c}")).unwrap_or_default(),
+            question: m.question.clone().unwrap_or_default(),
+            slug: m.slug.clone().unwrap_or_default(),
+            active: m.active.unwrap_or(false),
+            closed: m.closed.unwrap_or(false),
+            yes_price,
+            no_price,
+            volume: m
+                .volume
+                .map(|v| v.to_string())
+                .unwrap_or_else(|| "0".to_string()),
+            liquidity: m
+                .liquidity
+                .map(|l| l.to_string())
+                .unwrap_or_else(|| "0".to_string()),
+            end_date: m.end_date.map(|d| d.to_rfc3339()),
+        }
+    }
+
+    fn pretty_row(&self) -> String {
+        let yes = self.yes_price.as_deref().unwrap_or("-");
+        let no = self.no_price.as_deref().unwrap_or("-");
+        let status = if self.closed {
+            "closed"
+        } else if self.active {
+            "active"
+        } else {
+            "inactive"
+        };
+        format!(
+            "  {:<8} yes={:<6} no={:<6} vol={:<12} liq={:<12} {}",
+            status, yes, no, self.volume, self.liquidity, self.question
+        )
+    }
+}
+
+fn dedupe_markets(markets: Vec<MarketDto>, key: &str) -> Vec<MarketDto> {
+    let mut seen = HashSet::new();
+    markets
+        .into_iter()
+        .filter(|m| {
+            let k = match key {
+                "slug" => &m.slug,
+                _ => &m.condition_id,
+            };
+            seen.insert(k.clone())
+        })
+        .collect()
+}
+
+fn sort_markets(markets: &mut [MarketDto], sort: &str) {
+    match sort {
+        "volume" => markets.sort_by(|a, b| {
+            let va: f64 = a.volume.parse().unwrap_or(0.0);
+            let vb: f64 = b.volume.parse().unwrap_or(0.0);
+            vb.partial_cmp(&va).unwrap_or(std::cmp::Ordering::Equal)
+        }),
+        "liquidity" => markets.sort_by(|a, b| {
+            let la: f64 = a.liquidity.parse().unwrap_or(0.0);
+            let lb: f64 = b.liquidity.parse().unwrap_or(0.0);
+            lb.partial_cmp(&la).unwrap_or(std::cmp::Ordering::Equal)
+        }),
+        "newest" => markets.sort_by(|a, b| {
+            let da = a.end_date.as_deref().unwrap_or("");
+            let db = b.end_date.as_deref().unwrap_or("");
+            db.cmp(da)
+        }),
+        _ => {}
+    }
+}
+
+fn output_markets(markets: &[MarketDto], ctx: &Ctx) -> Result<(), HeatError> {
+    match ctx.output.format {
+        OutputFormat::Pretty => {
+            if markets.is_empty() {
+                println!("  No markets found.");
+            } else {
+                for m in markets {
+                    println!("{}", m.pretty_row());
+                }
+            }
+        }
+        OutputFormat::Json | OutputFormat::Ndjson => {
+            ctx.output.write_data(&markets, None).map_err(io_err)?;
+        }
+        OutputFormat::Quiet => {}
+    }
+    Ok(())
+}
+
 // ── Markets ──────────────────────────────────────────────────────────────
 
 #[derive(Subcommand)]
@@ -47,19 +165,40 @@ pub enum MarketsSubcommand {
         /// Filter by closed status
         #[arg(long)]
         closed: Option<bool>,
+        /// Filter by active status (client-side)
+        #[arg(long)]
+        active: Option<bool>,
+        /// Sort results: volume, liquidity, newest
+        #[arg(long)]
+        sort: Option<String>,
+        /// Deduplicate by: slug, condition_id
+        #[arg(long)]
+        dedupe: Option<String>,
     },
-    /// Get market by ID
+    /// Get market by ID or slug
     Get {
         /// Market ID or slug
         id: String,
     },
-    /// Search markets
+    /// Search markets by query (extracts markets from matching events)
     Search {
         /// Search query
         query: String,
         /// Max results per type
         #[arg(long, default_value_t = 10)]
         limit: i32,
+        /// Filter by closed status (client-side)
+        #[arg(long)]
+        closed: Option<bool>,
+        /// Filter by active status (client-side)
+        #[arg(long)]
+        active: Option<bool>,
+        /// Sort results: volume, liquidity, newest
+        #[arg(long)]
+        sort: Option<String>,
+        /// Deduplicate by: slug, condition_id
+        #[arg(long)]
+        dedupe: Option<String>,
     },
     /// Get tags for a market
     Tags {
@@ -75,32 +214,32 @@ pub async fn markets(sub: MarketsSubcommand, ctx: &Ctx) -> Result<(), HeatError>
             limit,
             offset,
             closed,
+            active,
+            sort,
+            dedupe,
         } => {
             let req = MarketsRequest::builder()
                 .limit(limit)
                 .maybe_offset(offset)
                 .maybe_closed(closed)
                 .build();
-            let markets = client.markets(&req).await.map_err(gamma_err)?;
-            match ctx.output.format {
-                OutputFormat::Pretty => {
-                    for m in &markets {
-                        println!(
-                            "{:<12} {}",
-                            m.condition_id.map(|c| format!("{c}")).unwrap_or_default(),
-                            m.question.as_deref().unwrap_or("")
-                        );
-                    }
-                }
-                OutputFormat::Json | OutputFormat::Ndjson => {
-                    ctx.output.write_data(&markets, None).map_err(io_err)?;
-                }
-                OutputFormat::Quiet => {}
+            let raw = client.markets(&req).await.map_err(gamma_err)?;
+            let mut dtos: Vec<MarketDto> = raw.iter().map(MarketDto::from_sdk).collect();
+
+            // Client-side active filter (SDK doesn't support it for markets)
+            if let Some(want_active) = active {
+                dtos.retain(|m| m.active == want_active);
             }
-            Ok(())
+            if let Some(ref key) = dedupe {
+                dtos = dedupe_markets(dtos, key);
+            }
+            if let Some(ref s) = sort {
+                sort_markets(&mut dtos, s);
+            }
+
+            output_markets(&dtos, ctx)
         }
         MarketsSubcommand::Get { id } => {
-            // Try by ID first, then by slug
             let result = if id.starts_with("0x") || id.len() == 66 {
                 let req = MarketByIdRequest::builder().id(&id).build();
                 client.market_by_id(&req).await.map_err(gamma_err)?
@@ -108,36 +247,74 @@ pub async fn markets(sub: MarketsSubcommand, ctx: &Ctx) -> Result<(), HeatError>
                 let req = MarketBySlugRequest::builder().slug(&id).build();
                 client.market_by_slug(&req).await.map_err(gamma_err)?
             };
+            let dto = MarketDto::from_sdk(&result);
             match ctx.output.format {
                 OutputFormat::Pretty => {
-                    println!("Question:     {}", result.question.as_deref().unwrap_or(""));
-                    println!(
-                        "Condition ID: {}",
-                        result
-                            .condition_id
-                            .map(|c| format!("{c}"))
-                            .unwrap_or_default()
-                    );
-                    println!("Active:       {}", result.active.unwrap_or(false));
-                    println!("Closed:       {}", result.closed.unwrap_or(false));
-                    if let Some(desc) = &result.description {
-                        println!("Description:  {desc}");
+                    println!("Question:     {}", dto.question);
+                    println!("Condition ID: {}", dto.condition_id);
+                    println!("Slug:         {}", dto.slug);
+                    println!("Active:       {}", dto.active);
+                    println!("Closed:       {}", dto.closed);
+                    if let Some(ref y) = dto.yes_price {
+                        println!("Yes price:    {y}");
+                    }
+                    if let Some(ref n) = dto.no_price {
+                        println!("No price:     {n}");
+                    }
+                    println!("Volume:       {}", dto.volume);
+                    println!("Liquidity:    {}", dto.liquidity);
+                    if let Some(ref d) = dto.end_date {
+                        println!("End date:     {d}");
                     }
                 }
                 OutputFormat::Json | OutputFormat::Ndjson => {
-                    ctx.output.write_data(&result, None).map_err(io_err)?;
+                    ctx.output.write_data(&dto, None).map_err(io_err)?;
                 }
                 OutputFormat::Quiet => {}
             }
             Ok(())
         }
-        MarketsSubcommand::Search { query, limit } => {
+        MarketsSubcommand::Search {
+            query,
+            limit,
+            closed,
+            active,
+            sort,
+            dedupe,
+        } => {
             let req = SearchRequest::builder()
                 .q(&query)
                 .limit_per_type(limit)
                 .build();
             let results = client.search(&req).await.map_err(gamma_err)?;
-            ctx.output.write_data(&results, None).map_err(io_err)
+
+            // Extract markets from events (search returns events, not markets directly)
+            let mut dtos = Vec::new();
+            if let Some(events) = &results.events {
+                for event in events {
+                    if let Some(markets) = &event.markets {
+                        for m in markets {
+                            dtos.push(MarketDto::from_sdk(m));
+                        }
+                    }
+                }
+            }
+
+            // Apply client-side filters
+            if let Some(want_closed) = closed {
+                dtos.retain(|m| m.closed == want_closed);
+            }
+            if let Some(want_active) = active {
+                dtos.retain(|m| m.active == want_active);
+            }
+            if let Some(ref key) = dedupe {
+                dtos = dedupe_markets(dtos, key);
+            }
+            if let Some(ref s) = sort {
+                sort_markets(&mut dtos, s);
+            }
+
+            output_markets(&dtos, ctx)
         }
         MarketsSubcommand::Tags { id } => {
             let req = MarketTagsRequest::builder().id(&id).build();
