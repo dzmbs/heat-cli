@@ -48,7 +48,7 @@ curl -fsSL https://raw.githubusercontent.com/dzmbs/heat-cli/main/install.sh | ba
 cargo install --git https://github.com/dzmbs/heat-cli --bin heat
 
 # Create an account
-heat accounts create main
+heat accounts create main --generate --persist-password ~/.heat/secrets/main.password
 
 # Hyperliquid — check price
 heat hl price ETH

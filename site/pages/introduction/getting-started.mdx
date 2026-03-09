@@ -29,14 +29,25 @@ See [Installation](/introduction/installation) for other methods and platform de
 
 Heat uses named accounts to manage keys. Each account has encrypted local key material plus account metadata under `~/.heat/`.
 
-### Option A: Create from a private key
+### Option A: Generate a new Heat account locally
 
 ```bash
-export HEAT_PASSWORD="your-strong-password"
-heat accounts create trading --key 0xabc123... --password-env HEAT_PASSWORD
+heat accounts create trading --generate --persist-password ~/.heat/secrets/trading.password
 ```
 
-### Option B: Import an existing keystore
+This is the recommended path for both humans and agents:
+- Heat generates the key locally
+- Heat generates the encryption password locally
+- Heat stores the password at the path you chose
+- future signing commands can reuse that stored password path automatically
+
+### Option B: Create from an existing private key
+
+```bash
+heat accounts create trading --key-file /path/to/private-key.txt --persist-password ~/.heat/secrets/trading.password
+```
+
+### Option C: Import an existing keystore
 
 If you already have an Ethereum V3 keystore file:
 

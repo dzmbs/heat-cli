@@ -4,12 +4,12 @@ Heat uses named accounts as its primary identity abstraction. Each account maps 
 
 ## Overview
 
-Accounts live in `~/.heat/accounts/` as TOML files. Keys live in `~/.heat/keys/` as Ethereum V3 keystore JSON files.
+Accounts live in `~/.heat/accounts/` as TOML files. Keys live in `~/.heat/keys/` as encrypted keystore JSON files.
 
 When you create an account, Heat:
-1. Encrypts the private key with your password (scrypt + AES-128-CTR)
-2. Derives and caches the Ethereum address
-3. Stores account metadata in a TOML file
+1. encrypts the key locally with your password (scrypt + AES-128-CTR)
+2. derives and caches the public identity for that account type
+3. stores account metadata in a TOML file, including how to find the password later when configured
 
 The cached address means read-only commands (balance, positions, price) do not require your password.
 
@@ -29,21 +29,37 @@ Shows all accounts with their type. The default account is marked with `*`.
 heat accounts get myaccount
 ```
 
-Displays name, type, key reference, address, and default network.
+Displays name, type, key reference, address, default network, and stored password source metadata when present.
 
 ### Create an account
 
+Recommended: let Heat generate both the key and password, then persist the password locally.
+
 ```bash
-heat accounts create myaccount --key 0x<64-hex-chars> --password-env HEAT_PASSWORD
+heat accounts create myaccount --generate --persist-password ~/.heat/secrets/myaccount.password
+```
+
+You can also create from existing key material:
+
+```bash
+heat accounts create myaccount --key-file /path/to/private-key.txt --persist-password ~/.heat/secrets/myaccount.password
 ```
 
 Arguments:
 - `name` — a short name for this account (used in `--account` and `heat accounts use`)
+- `--generate` — generate a fresh local key
 - `--key` — your private key as 0x-prefixed hex (32 bytes / 64 hex characters)
+- `--key-file` — path to a file containing the private key
 - `--password-file` — path to a file containing the encryption password
 - `--password-env` — name of an environment variable containing the password
+- `--persist-password` — path where Heat should store the password with secure file permissions
 
-You must provide a password via `--password-file`, `--password-env`, or the `HEAT_PASSWORD` environment variable.
+For safe non-interactive setup, you must provide one of:
+- `--password-file`
+- `--password-env`
+- `--persist-password`
+
+If you provide `--persist-password` without `--password-file` or `--password-env`, Heat generates a strong password and stores it at that path.
 
 ### Import an existing keystore
 
@@ -52,6 +68,14 @@ heat accounts import myaccount --keystore /path/to/keystore.json
 ```
 
 Imports a standard Ethereum V3 keystore file. The keystore is copied into `~/.heat/keys/`. The original file is not modified.
+
+If you want Heat to remember how to unlock that keystore later, attach a password source when importing:
+
+```bash
+heat accounts import myaccount \
+  --keystore /path/to/keystore.json \
+  --password-file ~/.wallet-passwords/myaccount.txt
+```
 
 ### Set the default account
 
@@ -91,13 +115,29 @@ Files are stored at `~/.heat/keys/<name>.json`.
 
 ## Password handling
 
-Heat never stores passwords. It reads passwords from:
+Heat encrypts keys locally and can remember how to find the decryption password later.
 
-1. `--password-file <path>` — reads password from a file
-2. `--password-env <VAR>` — reads password from the named environment variable
+Preferred setup:
+
+1. create the account with `--persist-password <path>`
+2. let Heat store that path in the account metadata
+3. use the account normally without re-specifying password flags on every command
+
+Password resolution for signing commands is:
+
+1. account `password_file` metadata, if present
+2. account `password_env` metadata, if present
 3. `HEAT_PASSWORD` environment variable (fallback)
 
-For automation, `HEAT_PASSWORD` is the simplest approach:
+That means this is the best automation flow:
+
+```bash
+heat accounts create trader --generate --persist-password ~/.heat/secrets/trader.password
+heat accounts use trader
+heat hl buy BTC 0.001 --price 95000 --dry-run
+```
+
+You can still use env-based password management if needed:
 
 ```bash
 export HEAT_PASSWORD="your-password"
@@ -134,5 +174,5 @@ See [Polymarket docs](/protocols/polymarket) for details on signature types.
 ```
 
 :::warning[Key security]
-Your private keys are encrypted locally. Heat never transmits your password or raw private key. Back up your keystore files and remember your password — there is no recovery path.
+Your private keys are encrypted locally. Heat never transmits your password or raw private key. Back up both the keystore file and the password file if you use `--persist-password`.
 :::

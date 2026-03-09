@@ -51,8 +51,7 @@ That means the right mental model is:
 ## 1. Create or import a Heat account
 
 ```bash
-export HEAT_PASSWORD="your-strong-password"
-heat accounts create trading --key 0xYOUR_PRIVATE_KEY --password-env HEAT_PASSWORD
+heat accounts create trading --generate --persist-password ~/.heat/secrets/trading.password
 heat accounts use trading
 heat accounts get trading
 ```
@@ -224,7 +223,7 @@ It is **not** used when merely creating a Heat account.
 ## Minimal onboarding checklist
 
 ```bash
-heat accounts create trading --key 0xYOUR_PRIVATE_KEY --password-env HEAT_PASSWORD
+heat accounts create trading --generate --persist-password ~/.heat/secrets/trading.password
 heat accounts use trading
 heat pm bridge deposit
 # fund externally, then continue

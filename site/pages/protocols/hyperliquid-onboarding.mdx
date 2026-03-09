@@ -18,11 +18,16 @@ Read-only market commands do not need an account. Trading and account commands d
 
 ## 1. Create or import a Heat account
 
-Create from an EVM private key:
+Recommended: generate a fresh local account:
 
 ```bash
-export HEAT_PASSWORD="your-strong-password"
-heat accounts create trading --key 0xYOUR_PRIVATE_KEY --password-env HEAT_PASSWORD
+heat accounts create trading --generate --persist-password ~/.heat/secrets/trading.password
+```
+
+Or create from an existing EVM private key:
+
+```bash
+heat accounts create trading --key-file /path/to/private-key.txt --persist-password ~/.heat/secrets/trading.password
 ```
 
 Or import an existing Ethereum V3 keystore:
@@ -191,7 +196,7 @@ This is the best starting stream for automation.
 ## Minimal onboarding checklist
 
 ```bash
-heat accounts create trading --key 0xYOUR_PRIVATE_KEY --password-env HEAT_PASSWORD
+heat accounts create trading --generate --persist-password ~/.heat/secrets/trading.password
 heat accounts use trading
 heat accounts get trading
 # fund externally, then continue
