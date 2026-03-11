@@ -1,0 +1,144 @@
+# DefiLlama
+
+Heat integrates DefiLlama for read-only DeFi market data — 27 free commands + 15 pro commands across 9 families.
+
+**Command:** `heat llama` (aliases: `heat defillama`, `heat dl`)
+
+## Free commands (no API key needed)
+
+These work out of the box against DefiLlama's public API:
+
+```bash
+# Protocol TVL data (3 commands)
+heat llama protocols list --sort tvl --limit 10
+heat llama protocols get aave
+heat llama protocols tvl uniswap
+
+# Chain TVL data (2 commands)
+heat llama chains list --sort tvl
+heat llama chains history Ethereum --limit 30
+
+# Token prices (7 commands)
+heat llama coins price "coingecko:bitcoin,coingecko:ethereum"
+heat llama coins historical 1704067200 "coingecko:bitcoin"
+heat llama coins chart "coingecko:bitcoin" --period 30d
+heat llama coins change "coingecko:bitcoin"
+heat llama coins first "coingecko:bitcoin"
+heat llama coins block Ethereum 1704067200
+heat llama coins batch-historical ./batch.json  # POST body from file
+
+# Stablecoins (5 commands)
+heat llama stablecoins list --sort circulating --limit 10
+heat llama stablecoins get 1
+heat llama stablecoins chains
+heat llama stablecoins chart Ethereum
+heat llama stablecoins prices
+
+# Fees and revenue (3 commands)
+heat llama fees overview --chain Ethereum --sort fees
+heat llama fees chain Ethereum
+heat llama fees protocol aave
+
+# Volumes (5 commands)
+heat llama volumes dexs --sort volume --limit 10
+heat llama volumes dex uniswap
+heat llama volumes options --sort volume
+heat llama volumes option deribit
+heat llama volumes open-interest --sort volume
+
+# Yields (2 commands)
+heat llama yields pools --sort apy --limit 10
+heat llama yields chart <pool-id>
+```
+
+## Pro commands (require DefiLlama API key)
+
+These require a [DefiLlama Pro](https://defillama.com/pro-api) API key ($300/month). Without a key, they return a clear authentication error.
+
+```bash
+# Coins (1 command)
+heat llama coins liquidity "coingecko:bitcoin"
+
+# Stablecoins (1 command)
+heat llama stablecoins dominance Ethereum
+
+# Bridges (5 commands)
+heat llama bridges list --sort volume
+heat llama bridges get 1
+heat llama bridges volume Ethereum
+heat llama bridges daystats 1704067200 Ethereum
+heat llama bridges tx 1
+
+# Volumes (2 commands)
+heat llama volumes derivatives --sort volume
+heat llama volumes derivative gmx
+
+# Yields (5 commands)
+heat llama yields pools-old
+heat llama yields borrow --sort apy
+heat llama yields lend-borrow-chart <pool-id>
+heat llama yields perps --sort open_interest
+heat llama yields lsd --sort apy
+
+# Usage analytics (1 command)
+heat llama usage
+```
+
+## Setting your API key
+
+```bash
+# Via environment variable
+export HEAT_DEFILLAMA_API_KEY=your-key
+
+# Or in Heat config under [protocols.defillama]
+# api_key = "your-key"
+```
+
+## Command scope
+
+| Family | Free | Pro | Total |
+|---|---|---|---|
+| **Protocols** | `list`, `get`, `tvl` | — | 3 |
+| **Chains** | `list`, `history` | — | 2 |
+| **Coins** | `price`, `historical`, `chart`, `change`, `first`, `block`, `batch-historical` | `liquidity` | 8 |
+| **Stablecoins** | `list`, `get`, `chains`, `chart`, `prices` | `dominance` | 6 |
+| **Bridges** | — | `list`, `get`, `volume`, `daystats`, `tx` | 5 |
+| **Fees** | `overview`, `chain`, `protocol` | — | 3 |
+| **Volumes** | `dexs`, `dex`, `options`, `option`, `open-interest` | `derivatives`, `derivative` | 7 |
+| **Yields** | `pools`, `chart` | `pools-old`, `borrow`, `lend-borrow-chart`, `perps`, `lsd` | 7 |
+| **Usage** | — | _(top-level)_ | 1 |
+| | **27 free** | **15 pro** | **42** |
+
+All commands are read-only and do not require a signer or account.
+
+## Notes
+
+- **Yields** commands hit `yields.llama.fi` instead of the main API base URL.
+- **`coins batch-historical`** uses a POST request (accepts many tokens at once).
+- **Pro commands** use `pro-api.llama.fi` as their base URL when a key is set.
+
+## Output
+
+All commands support Heat's standard output modes:
+
+```bash
+# Pretty table (TTY default)
+heat llama protocols list
+
+# JSON (piped default, or explicit)
+heat llama protocols list --json | jq '.protocols[:3]'
+
+# Quiet — scalar output only (where supported)
+TVL=$(heat llama protocols tvl aave -q)
+```
+
+## Sorting and filtering
+
+List commands support `--sort` and `--limit`. Protocol lists also support `--category` and `--chain` filters.
+
+```bash
+heat llama protocols list --category Lending --chain Ethereum --sort tvl --limit 5
+heat llama stablecoins list --sort name
+heat llama fees overview --sort change_1d
+heat llama yields pools --sort tvl --limit 20
+```

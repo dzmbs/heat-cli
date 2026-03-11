@@ -58,6 +58,10 @@ enum Command {
     /// LI.FI cross-chain bridge and swap commands
     Lifi(heat_lifi::cmd::LifiCmd),
 
+    /// DefiLlama market data and research
+    #[command(alias = "defillama", alias = "dl")]
+    Llama(heat_llama::cmd::LlamaCmd),
+
     /// Polymarket protocol commands
     #[command(alias = "pm")]
     Polymarket(heat_pm::cmd::PmCmd),
@@ -118,6 +122,7 @@ async fn run(command: Command, ctx: &Ctx) -> Result<(), HeatError> {
         Command::Accounts(cmd) => cmd_accounts::run(cmd, ctx),
         Command::Hl(cmd) => heat_hl::cmd::run(cmd, ctx).await,
         Command::Lifi(cmd) => heat_lifi::cmd::run(cmd, ctx).await,
+        Command::Llama(cmd) => heat_llama::cmd::run(cmd, ctx).await,
         Command::Polymarket(cmd) => heat_pm::cmd::run(cmd, ctx).await,
         Command::Wallet(cmd) => cmd_wallet::run(cmd, ctx).await,
         Command::Config => cmd_config(ctx),

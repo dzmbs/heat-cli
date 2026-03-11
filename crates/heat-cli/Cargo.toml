@@ -12,6 +12,7 @@ heat-aave = { workspace = true }
 heat-core = { workspace = true }
 heat-evm = { workspace = true }
 heat-hl = { path = "../heat-hl" }
+heat-llama = { workspace = true }
 heat-lifi = { workspace = true }
 heat-pm = { path = "../heat-pm" }
 clap = { workspace = true }

@@ -309,6 +309,7 @@ Extend Heat into lending / collateral / position-management workflows.
 - Aave
 - Kamino
 - Pacific
+- DefiLlama
 
 ### Implementation policy
 Treat each protocol as a protocol tree.
@@ -331,6 +332,46 @@ Before implementation, do a short protocol interview to decide:
 ### Goals
 - prove Heat can extend beyond trading and bridging
 - pressure-test the account model for non-EVM-only future support
+
+---
+
+## Phase 5 - Research / intelligence data layer
+
+### Objective
+Add a broad read-only protocol/data integration layer for market intelligence and research workflows.
+
+### Candidate protocols
+- DefiLlama
+
+### Why this phase matters
+Heat already covers execution-heavy protocol workflows.
+A serious research/data protocol makes Heat more useful for:
+- agents
+- researchers
+- discretionary traders
+- terminal users doing discovery and monitoring
+
+### DefiLlama implementation policy
+- treat DefiLlama as a protocol-first data tree (`heat llama ...`)
+- use direct REST integration in Rust
+- support public endpoints first, but design for pro-key support from day one
+- keep Heat-native output DTOs and stable machine-readable contracts
+- do not build around website-only subscription/dashboard features
+
+### Likely first-scope actions
+- protocols / TVL
+- chains
+- coins / prices
+- stablecoins
+- bridges
+- fees / DEX volumes
+
+### Follow-on scope
+- yields / borrow / perps / LSD rates
+- unlocks / emissions
+- categories / forks / oracles / entities
+- raises / treasuries / hacks
+- institutions / ETFs / FDV / usage
 
 ---
 

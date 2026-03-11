@@ -1,0 +1,97 @@
+# Heat CLI v0.4.0
+
+Heat v0.4.0 adds DefiLlama as the fifth protocol — a read-only DeFi research and market data layer with 27 free commands and 15 pro commands across 9 families.
+
+## New: DefiLlama
+
+Command: `heat llama` (aliases: `heat defillama`, `heat dl`)
+
+### Free commands (no API key required)
+
+These 27 commands work against DefiLlama's public API with no authentication:
+
+- **Protocols (3):** `list`, `get`, `tvl`
+- **Chains (2):** `list`, `history`
+- **Coins (7):** `price`, `historical`, `chart`, `change`, `first`, `block`, `batch-historical`
+- **Stablecoins (5):** `list`, `get`, `chains`, `chart`, `prices`
+- **Fees (3):** `overview`, `chain`, `protocol`
+- **Volumes (5):** `dexs`, `dex`, `options`, `option`, `open-interest`
+- **Yields (2):** `pools`, `chart`
+
+### Pro commands ($300/mo API key)
+
+These 15 commands require a DefiLlama Pro API key. Without one, they fail gracefully with a clear auth error and a hint on how to set the key.
+
+- **Coins (1):** `liquidity`
+- **Stablecoins (1):** `dominance`
+- **Bridges (5):** `list`, `get`, `volume`, `daystats`, `tx`
+- **Volumes (2):** `derivatives`, `derivative`
+- **Yields (5):** `pools-old`, `borrow`, `lend-borrow-chart`, `perps`, `lsd`
+- **Usage (1):** `usage`
+
+### API key
+
+Set a Pro API key via `HEAT_DEFILLAMA_API_KEY` or `[protocols.defillama].api_key` in config. Free commands never require it.
+
+### Design highlights
+
+- Direct REST client in Rust — no JS/Python SDK runtime
+- Heat-owned output DTOs — no raw upstream JSON leaks into the CLI contract
+- Multi-base-URL routing across DefiLlama's API families (api.llama.fi, coins.llama.fi, stablecoins.llama.fi, bridges.llama.fi, yields.llama.fi)
+- Pro key gating with clear error messages
+- Flexible upstream data parsing (e.g. timestamps, chainId as string or number)
+- POST support for batch endpoints (e.g. `coins batch-historical`)
+- Sort validation with explicit errors on unknown values
+- 57 unit tests covering mapping, URL construction, and edge cases
+
+## All supported protocols
+
+| Protocol | Status | Since |
+|----------|--------|-------|
+| Hyperliquid | Supported | v0.1.0 |
+| Polymarket | Supported | v0.2.0 |
+| Aave V3 | Supported (Phase 1) | v0.2.0 |
+| LI.FI | Supported | v0.2.0 |
+| DefiLlama | Supported (27 free / 15 pro) | v0.4.0 |
+
+## Current boundaries
+
+Everything from v0.2.0 still applies, plus:
+
+- DefiLlama is read-only — no write-path commands
+- Some endpoint families (ecosystem, institutions, ETFs, FDV) are not yet shipped pending live API validation
+- No HTTP-layer integration tests yet (unit tests cover mapping and URL construction)
+
+## Example commands
+
+```bash
+# Top protocols by TVL (free)
+heat llama protocols list --sort tvl --limit 10
+
+# Protocol deep dive (free)
+heat llama protocols get aave
+
+# Token prices (free)
+heat llama coins price "coingecko:bitcoin,coingecko:ethereum"
+
+# Stablecoin market (free)
+heat llama stablecoins list --sort circulating --limit 5
+
+# Fee landscape (free)
+heat llama fees overview --chain Ethereum --sort fees
+
+# DEX volumes (free)
+heat llama volumes dexs --chain Ethereum
+
+# Yield pools (free)
+heat llama yields pools --sort apy --limit 10
+
+# Bridge overview (pro)
+heat llama bridges list --sort volume --limit 10
+
+# Borrow rates (pro)
+heat llama yields borrow --chain Ethereum --limit 5
+
+# Machine-readable
+heat llama protocols list --json | jq '.protocols[:3]'
+```

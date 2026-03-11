@@ -1,6 +1,6 @@
 # Limitations
 
-Heat v0.2.0 is an early release. This page lists known limitations so you can plan accordingly.
+Heat v0.3.0 is an early release. This page lists known limitations so you can plan accordingly.
 
 :::warning[Early release]
 Start with small amounts. Use `--dry-run` liberally. Verify behavior before scaling up. Report issues if you find them.
@@ -51,6 +51,17 @@ Not supported yet:
 - eMode
 - rewards
 
+## DefiLlama is read-only market data
+
+DefiLlama integration is read-only — 42 commands across 9 endpoint families (27 free + 15 pro).
+
+Current limitations:
+
+- **Not yet shipped:** ecosystem intelligence, institutions, ETFs, and FDV performance families are planned but require live API validation before inclusion
+- **No HTTP-layer integration tests yet** — unit tests cover mapping and URL construction only
+- **Pro API key required** for bridges, some yields, some volumes, some coins, dominance, and usage commands
+- Upstream API responses are sometimes inconsistent in field types (handled gracefully)
+
 ## Local key accounts only
 
 Heat stores encrypted private keys locally in `~/.heat/keys/`. There is no support for:
@@ -94,5 +105,6 @@ done
 - Hyperliquid funding/deposit flows remain manual.
 - Aave is intentionally not full-surface yet.
 - LI.FI scope is honest but still deliberately narrow.
+- DefiLlama is read-only market data (42 commands, 9 families); some endpoint families not yet shipped pending live API validation; no HTTP-layer integration tests yet.
 - Heat does not do interactive password prompts yet. Use `--persist-password`, `--password-file`, `--password-env`, or `HEAT_PASSWORD`.
 - All financial amounts are handled as strings/decimals to preserve precision; never as floating point.

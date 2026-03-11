@@ -39,9 +39,14 @@ const docs = [
     items: [{ text: "Overview", link: "/protocols/lifi" }],
   },
   {
+    text: "DefiLlama",
+    items: [{ text: "Overview", link: "/protocols/defillama" }],
+  },
+  {
     text: "Reference",
     items: [
       { text: "Limitations", link: "/reference/limitations" },
+      { text: "v0.4.0 Release Notes", link: "/reference/v0-4-0" },
       { text: "v0.2.0 Release Notes", link: "/reference/v0-2-0" },
       { text: "v0.1.0 Release Notes", link: "/reference/v0-1-0" },
     ],
