@@ -20,7 +20,7 @@ curl -fsSL https://raw.githubusercontent.com/dzmbs/heat-cli/main/install.sh | ba
 </div>
 
   <HomePage.Description>
-    Trade, bridge, lend, and inspect crypto protocols from your terminal with one consistent account, safety, and output model.
+    Trade, bridge, lend, and research crypto protocols from your terminal with one consistent account, safety, and output model.
   </HomePage.Description>
   <HomePage.Buttons>
     <HomePage.Button href="/introduction/getting-started" variant="accent">Get Started</HomePage.Button>
@@ -47,6 +47,10 @@ curl -fsSL https://raw.githubusercontent.com/dzmbs/heat-cli/main/install.sh | ba
   <a href="/protocols/lifi" style={{ textDecoration: 'none', color: 'inherit', padding: '24px', borderRadius: '12px', border: '1px solid var(--vocs-color_border)', transition: 'border-color 0.2s' }}>
     <div style={{ fontWeight: 700, marginBottom: '4px' }}>LI.FI</div>
     <div style={{ fontSize: '14px', opacity: 0.7 }}>EVM route discovery and bridge execution across supported chains with Heat safety and account handling.</div>
+  </a>
+  <a href="/protocols/defillama" style={{ textDecoration: 'none', color: 'inherit', padding: '24px', borderRadius: '12px', border: '1px solid var(--vocs-color_border)', transition: 'border-color 0.2s' }}>
+    <div style={{ fontWeight: 700, marginBottom: '4px' }}>DefiLlama</div>
+    <div style={{ fontSize: '14px', opacity: 0.7 }}>Read-only protocol, chain, price, stablecoin, fee, volume, bridge, and yield data for research workflows.</div>
   </a>
   <a href="/core/output" style={{ textDecoration: 'none', color: 'inherit', padding: '24px', borderRadius: '12px', border: '1px solid var(--vocs-color_border)', transition: 'border-color 0.2s' }}>
     <div style={{ fontWeight: 700, marginBottom: '4px' }}>Reliable Machine Output</div>
@@ -80,6 +84,9 @@ heat aave health --chain base --account main
 
 # LI.FI
 heat lifi bridge 100 USDC --from ethereum --to arbitrum --account main --dry-run
+
+# DefiLlama
+heat llama protocols list --sort tvl --limit 5
 ```
 
 <div style={{ textAlign: 'center', marginTop: '64px' }}>
@@ -90,14 +97,14 @@ heat lifi bridge 100 USDC --from ethereum --to arbitrum --account main --dry-run
 </div>
 
 <div style={{ fontSize: '15px', opacity: 0.8, lineHeight: 1.7, margin: '16px 0 48px' }}>
-Every protocol gets its own first-class command tree — <code>heat hl</code>, <code>heat pm</code>, <code>heat aave</code>, <code>heat lifi</code> — with native vocabulary and no forced abstractions. Heat owns the output contract, safety model, and account layer, while each protocol keeps its own execution semantics underneath.
+Every protocol gets its own first-class command tree — <code>heat hl</code>, <code>heat pm</code>, <code>heat aave</code>, <code>heat lifi</code>, <code>heat llama</code> — with native vocabulary and no forced abstractions. Heat owns the output contract, safety model, and account layer, while each protocol keeps its own execution semantics underneath.
 </div>
 
 ---
 
 <div style={{ textAlign: 'center', fontSize: '14px', color: '#888', paddingBottom: '24px' }}>
 
-Current release scope (v0.2.0): Hyperliquid, Polymarket, Aave phase 1, and LI.FI EVM bridging. Use with small amounts. <a href="/reference/limitations">Limitations</a>.
+Current release scope (v0.4.0): Hyperliquid, Polymarket, Aave phase 1, LI.FI EVM bridging, and DefiLlama read-only market data. Use with small amounts. <a href="/reference/limitations">Limitations</a>.
 
 </div>
 

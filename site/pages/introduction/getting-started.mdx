@@ -3,7 +3,7 @@
 This guide walks through first-time setup: install Heat, create an account, understand funding, and run your first protocol commands.
 
 :::info[What is Heat?]
-Heat is a unified crypto CLI for traders, AI agents, researchers, and terminal power users. It currently supports Hyperliquid, Polymarket, Aave phase 1, and LI.FI-backed EVM bridging behind one consistent output, account, and safety model.
+Heat is a unified crypto CLI for traders, AI agents, researchers, and terminal power users. It currently supports Hyperliquid, Polymarket, Aave phase 1, LI.FI-backed EVM bridging, and DefiLlama read-only market data behind one consistent output, account, and safety model.
 :::
 
 ## 1. Install Heat
@@ -80,6 +80,7 @@ The address shown by `heat accounts get trading` is important for onboarding.
 - Hyperliquid funding is currently done externally to that account address.
 - Polymarket uses the same Heat account for signing, but may derive a different effective Polymarket wallet depending on signature type.
 - Aave and LI.FI use the same Heat EVM account model directly.
+- DefiLlama is read-only market data and does not require an account for normal usage.
 
 ## 5. Understand funding today
 
@@ -161,6 +162,14 @@ heat aave health --chain base --account trading
 heat lifi chains
 heat lifi tokens --chain ethereum
 heat lifi routes --from-chain ethereum --to-chain arbitrum --from-token USDC --to-token USDC --amount 1000000 --from-address 0x...
+```
+
+### DefiLlama
+
+```bash
+heat llama protocols list --limit 5
+heat llama chains list --limit 5
+heat llama fees overview --chain Ethereum
 ```
 
 ## 7. Verify funded accounts
