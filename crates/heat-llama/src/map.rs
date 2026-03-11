@@ -831,7 +831,7 @@ pub fn map_institutions(raw: client::RawInstitutionsResponse) -> dto::Institutio
             let id_str = entry.institution_id?.to_string();
             let meta = raw.institution_metadata.get(&id_str);
             Some(dto::InstitutionRow {
-                name: meta.and_then(|m| m.name.clone()).unwrap_or_else(|| id_str),
+                name: meta.and_then(|m| m.name.clone()).unwrap_or(id_str),
                 ticker: meta.and_then(|m| m.ticker.clone()),
                 inst_type: meta.and_then(|m| m.inst_type.clone()),
                 total_value_usd: entry.total_usd_value,
