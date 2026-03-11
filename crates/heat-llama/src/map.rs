@@ -740,14 +740,8 @@ pub fn map_inflows(raw: client::RawInflowsResponse, protocol: &str) -> dto::Infl
         outflows_usd: raw.outflows,
         old_tokens_date: raw.old_tokens.as_ref().and_then(|t| t.date),
         current_tokens_date: raw.current_tokens.as_ref().and_then(|t| t.date),
-        old_tokens: raw
-            .old_tokens
-            .map(|t| t.tvl)
-            .unwrap_or_default(),
-        current_tokens: raw
-            .current_tokens
-            .map(|t| t.tvl)
-            .unwrap_or_default(),
+        old_tokens: raw.old_tokens.map(|t| t.tvl).unwrap_or_default(),
+        current_tokens: raw.current_tokens.map(|t| t.tvl).unwrap_or_default(),
     }
 }
 
@@ -898,10 +892,7 @@ pub fn map_etf_flows(raw: Vec<client::RawEtfFlow>) -> dto::EtfFlowsDto {
 // FDV
 // ---------------------------------------------------------------------------
 
-pub fn map_fdv_performance(
-    raw: Vec<serde_json::Value>,
-    period: &str,
-) -> dto::FdvPerformanceDto {
+pub fn map_fdv_performance(raw: Vec<serde_json::Value>, period: &str) -> dto::FdvPerformanceDto {
     let points = raw
         .into_iter()
         .filter_map(|val| {

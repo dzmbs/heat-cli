@@ -1285,12 +1285,8 @@ impl DefiLlamaClient {
     // -----------------------------------------------------------------------
 
     pub async fn token_protocols(&self, symbol: &str) -> Result<Vec<RawTokenProtocol>, HeatError> {
-        self.get_json(
-            ApiFamily::Main,
-            &format!("tokenProtocols/{symbol}"),
-            &[],
-        )
-        .await
+        self.get_json(ApiFamily::Main, &format!("tokenProtocols/{symbol}"), &[])
+            .await
     }
 
     pub async fn inflows(
@@ -1311,7 +1307,10 @@ impl DefiLlamaClient {
             .await
     }
 
-    pub async fn institution_symbol(&self, symbol: &str) -> Result<RawInstitutionDetail, HeatError> {
+    pub async fn institution_symbol(
+        &self,
+        symbol: &str,
+    ) -> Result<RawInstitutionDetail, HeatError> {
         self.get_json(ApiFamily::Main, &format!("dat/institutions/{symbol}"), &[])
             .await
     }
@@ -1412,7 +1411,10 @@ mod tests {
 
     #[test]
     fn parse_iso_timestamp() {
-        assert_eq!(super::parse_iso_to_unix("2026-03-10T23:16:23.000Z").unwrap(), 1773184583);
+        assert_eq!(
+            super::parse_iso_to_unix("2026-03-10T23:16:23.000Z").unwrap(),
+            1773184583
+        );
     }
 
     #[test]
