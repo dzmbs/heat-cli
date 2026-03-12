@@ -43,7 +43,6 @@ pub struct ChainsResponse {
 
 #[derive(Debug, Deserialize)]
 pub struct TokensResponse {
-    /// Map of chainId → list of tokens.
     pub tokens: std::collections::HashMap<String, Vec<RawToken>>,
 }
 
@@ -249,6 +248,7 @@ pub struct RoutesParams {
     pub to_token_address: String,
     pub from_amount: String,
     pub from_address: Option<String>,
+    pub slippage: Option<f64>,
 }
 
 pub struct StatusParams {
@@ -274,7 +274,7 @@ impl LifiClient {
             .ok()
             .filter(|s| !s.is_empty());
         let client = reqwest::Client::builder()
-            .user_agent("heat-cli/0.1")
+            .user_agent("heat-cli/0.4")
             .connect_timeout(std::time::Duration::from_secs(10))
             .timeout(std::time::Duration::from_secs(30))
             .build()
@@ -292,7 +292,7 @@ impl LifiClient {
     #[allow(dead_code)]
     pub fn with_base_url(base_url: impl Into<String>) -> Result<Self, HeatError> {
         let client = reqwest::Client::builder()
-            .user_agent("heat-cli/0.1")
+            .user_agent("heat-cli/0.4")
             .connect_timeout(std::time::Duration::from_secs(10))
             .timeout(std::time::Duration::from_secs(30))
             .build()
@@ -437,6 +437,8 @@ impl LifiClient {
             from_amount: String,
             #[serde(skip_serializing_if = "Option::is_none")]
             from_address: Option<String>,
+            #[serde(skip_serializing_if = "Option::is_none")]
+            slippage: Option<f64>,
         }
 
         let body = RoutesBody {
@@ -446,6 +448,7 @@ impl LifiClient {
             to_token_address: params.to_token_address.clone(),
             from_amount: params.from_amount.clone(),
             from_address: params.from_address.clone(),
+            slippage: params.slippage,
         };
 
         self.post_json("advanced/routes", &body).await

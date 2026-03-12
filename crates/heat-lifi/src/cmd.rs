@@ -159,6 +159,10 @@ pub struct BridgeArgs {
     #[arg(long)]
     pub route_index: Option<usize>,
 
+    /// Slippage tolerance (0.0–1.0, e.g. 0.03 for 3%). Defaults to LI.FI's 3%.
+    #[arg(long)]
+    pub slippage: Option<f64>,
+
     /// Source chain RPC URL override
     #[arg(long)]
     pub rpc: Option<String>,
@@ -261,6 +265,7 @@ async fn routes(args: RoutesArgs, ctx: &Ctx) -> Result<(), HeatError> {
         to_token_address: args.to_token.clone(),
         from_amount: args.amount.clone(),
         from_address: args.from_address,
+        slippage: None,
     };
     let summary = RoutesSummary {
         from_chain_id,
@@ -271,7 +276,7 @@ async fn routes(args: RoutesArgs, ctx: &Ctx) -> Result<(), HeatError> {
     };
 
     let raw = client.routes(&params).await?;
-    let dto = map::map_routes(raw, summary, &chain_types);
+    let dto = map::map_routes(&raw, summary, &chain_types);
 
     ctx.output
         .write_data(&dto, Some(&pretty_routes))
@@ -337,6 +342,17 @@ async fn bridge(args: BridgeArgs, ctx: &Ctx) -> Result<(), HeatError> {
     let amount_str = amount_base.to_string();
     let amount_display = format!("{} {}", args.amount, from_token_symbol);
 
+    // 5b. Validate slippage if provided.
+    if let Some(s) = args.slippage
+        && !(0.0..=1.0).contains(&s)
+    {
+        return Err(HeatError::validation(
+            "invalid_slippage",
+            format!("Slippage must be between 0.0 and 1.0, got {s}"),
+        )
+        .with_hint("Example: --slippage 0.03 for 3%"));
+    }
+
     // 6. Request routes.
     let chains_resp = client.chains().await?;
     let chain_types: std::collections::HashMap<u64, String> = chains_resp
@@ -352,6 +368,7 @@ async fn bridge(args: BridgeArgs, ctx: &Ctx) -> Result<(), HeatError> {
         to_token_address: to_token_addr.clone(),
         from_amount: amount_str.clone(),
         from_address: Some(sender_hex.clone()),
+        slippage: args.slippage,
     };
     let routes_resp = client.routes(&routes_params).await?;
 
@@ -377,7 +394,7 @@ async fn bridge(args: BridgeArgs, ctx: &Ctx) -> Result<(), HeatError> {
         to_token: to_token_addr.clone(),
         from_amount: amount_str.clone(),
     };
-    let all_routes = map::map_routes(routes_resp, summary, &chain_types);
+    let all_routes = map::map_routes(&routes_resp, summary, &chain_types);
     let executable: Vec<_> = all_routes
         .routes
         .iter()
@@ -458,29 +475,13 @@ async fn bridge(args: BridgeArgs, ctx: &Ctx) -> Result<(), HeatError> {
         heat_evm::rpc::resolve_rpc_url(ctx, from_chain, args.rpc.as_deref(), Some("lifi"))?;
     let wallet_prov = heat_evm::wallet_provider(ctx, from_chain, &rpc_url).await?;
 
-    // 12. Re-fetch raw routes to get raw step data for stepTransaction API.
-    let raw_routes = client
-        .routes(&RoutesParams {
-            from_chain_id,
-            to_chain_id,
-            from_token_address: from_token_addr.clone(),
-            to_token_address: to_token_addr.clone(),
-            from_amount: amount_str.clone(),
-            from_address: Some(sender_hex.clone()),
-        })
-        .await?;
-
-    // Find the same route by ID.
-    let raw_route = raw_routes
+    // 12. Use the raw route from the original fetch (route IDs are not stable across requests).
+    let raw_route = routes_resp
         .routes
         .into_iter()
-        .find(|r| r.id == selected_route.id)
+        .nth(route_idx)
         .ok_or_else(|| {
-            HeatError::protocol(
-                "route_expired",
-                "Selected route is no longer available (routes may expire quickly)",
-            )
-            .with_hint("Try again — routes are time-sensitive")
+            HeatError::protocol("route_expired", "Selected route is no longer available")
         })?;
 
     // 13. Execute each step.

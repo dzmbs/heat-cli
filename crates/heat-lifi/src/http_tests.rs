@@ -288,6 +288,7 @@ async fn routes_posts_json_body_with_camel_case_keys() {
         to_token_address: "0xusdc-arb".to_owned(),
         from_amount: "1000000".to_owned(),
         from_address: None,
+        slippage: None,
     };
     let resp = client.routes(&params).await.unwrap();
 
@@ -320,6 +321,7 @@ async fn routes_omits_from_address_when_none() {
         to_token_address: "0xusdc-arb".to_owned(),
         from_amount: "1000000".to_owned(),
         from_address: None,
+        slippage: None,
     };
     let resp = client.routes(&params).await.unwrap();
     assert_eq!(resp.routes.len(), 1);

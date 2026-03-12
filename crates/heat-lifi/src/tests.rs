@@ -175,7 +175,7 @@ fn route_dto_serializes_with_steps_and_tags() {
         from_amount: "1000000".to_owned(),
     };
     let chain_types = std::collections::HashMap::new();
-    let dto = map::map_routes(raw_resp, summary, &chain_types);
+    let dto = map::map_routes(&raw_resp, summary, &chain_types);
     let json = serde_json::to_value(&dto).unwrap();
 
     let route = &json["routes"][0];

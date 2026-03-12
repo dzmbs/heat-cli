@@ -179,7 +179,6 @@ fn map_route(raw: &RawRoute, chain_types: &std::collections::HashMap<u64, String
         to_amount_min: raw.to_amount_min.clone(),
         steps: raw.steps.iter().map(map_step).collect(),
         tags: raw.tags.clone(),
-        // Execution fields are filled in below after classification.
         execution_supported: false,
         execution_family: String::new(),
         execution_reason: None,
@@ -192,7 +191,7 @@ fn map_route(raw: &RawRoute, chain_types: &std::collections::HashMap<u64, String
 }
 
 pub fn map_routes(
-    resp: RoutesResponse,
+    resp: &RoutesResponse,
     params_summary: RoutesSummary,
     chain_types: &std::collections::HashMap<u64, String>,
 ) -> RoutesListDto {
