@@ -28,6 +28,7 @@ fn raw_usdc(chain_id: u64) -> RawToken {
         name: "USD Coin".to_owned(),
         chain_id,
         logo_uri: Some("https://example.com/usdc.png".to_owned()),
+        extra: Default::default(),
     }
 }
 
@@ -43,6 +44,7 @@ fn raw_eth_chain() -> RawChain {
             name: "Ether".to_owned(),
             chain_id: 1,
             logo_uri: None,
+            extra: Default::default(),
         },
     }
 }
@@ -56,8 +58,10 @@ fn raw_estimate(from_chain: u64, _to_chain: u64) -> RawEstimate {
         fee_costs: vec![RawFee {
             amount: "2000".to_owned(),
             token: raw_usdc(from_chain),
+            extra: Default::default(),
         }],
         approval_address: None,
+        extra: Default::default(),
     }
 }
 
@@ -69,6 +73,7 @@ fn raw_step(from_chain: u64, to_chain: u64) -> RawStep {
             key: "stargate".to_owned(),
             name: "Stargate".to_owned(),
             logo_uri: None,
+            extra: Default::default(),
         },
         action: RawStepAction {
             from_token: raw_usdc(from_chain),
@@ -77,6 +82,7 @@ fn raw_step(from_chain: u64, to_chain: u64) -> RawStep {
             from_chain_id: from_chain,
             to_chain_id: to_chain,
             from_address: None,
+            extra: Default::default(),
         },
         estimate: raw_estimate(from_chain, to_chain),
         extra: std::collections::HashMap::new(),
@@ -237,6 +243,7 @@ fn map_chains_collects_all_chains() {
                     name: "Ether".to_owned(),
                     chain_id: 42161,
                     logo_uri: None,
+                    extra: Default::default(),
                 },
             },
         ],
@@ -261,6 +268,7 @@ fn map_tokens_flattens_chain_map() {
             name: "USD Coin".to_owned(),
             chain_id: 42161,
             logo_uri: None,
+            extra: Default::default(),
         }],
     );
     let resp = crate::client::TokensResponse { tokens };

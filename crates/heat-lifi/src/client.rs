@@ -24,6 +24,8 @@ pub struct RawToken {
     #[serde(rename = "logoURI")]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub logo_uri: Option<String>,
+    #[serde(flatten)]
+    pub extra: std::collections::HashMap<String, serde_json::Value>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -85,12 +87,16 @@ pub struct RawToolDetails {
     #[serde(rename = "logoURI")]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub logo_uri: Option<String>,
+    #[serde(flatten)]
+    pub extra: std::collections::HashMap<String, serde_json::Value>,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct RawFee {
     pub amount: String,
     pub token: RawToken,
+    #[serde(flatten)]
+    pub extra: std::collections::HashMap<String, serde_json::Value>,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -109,6 +115,8 @@ pub struct RawEstimate {
     #[serde(rename = "approvalAddress")]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub approval_address: Option<String>,
+    #[serde(flatten)]
+    pub extra: std::collections::HashMap<String, serde_json::Value>,
 }
 
 /// A LI.FI step (used both in quotes and route steps).
@@ -144,6 +152,8 @@ pub struct RawStepAction {
     #[serde(rename = "fromAddress")]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub from_address: Option<String>,
+    #[serde(flatten)]
+    pub extra: std::collections::HashMap<String, serde_json::Value>,
 }
 
 /// LI.FI returns the quote as a single step object.
