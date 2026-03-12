@@ -33,6 +33,8 @@ fn market_addresses_are_nonzero() {
         assert!(!market.pool_addresses_provider.is_zero());
         assert!(!market.pool.is_zero());
         assert!(!market.protocol_data_provider.is_zero());
+        assert!(!market.weth_gateway.is_zero());
+        assert!(!market.weth_underlying.is_zero());
     }
 }
 
@@ -43,6 +45,8 @@ fn market_addresses_are_unique_per_chain() {
             market.pool_addresses_provider,
             market.pool,
             market.protocol_data_provider,
+            market.weth_gateway,
+            market.weth_underlying,
         ];
         for i in 0..addrs.len() {
             for j in (i + 1)..addrs.len() {
@@ -233,7 +237,7 @@ fn health_dto_serializes() {
 // ---------------------------------------------------------------------------
 
 #[test]
-fn supply_result_dto_serializes_with_approval() {
+fn supply_result_dto_serializes_erc20_path() {
     let dto = SupplyResultDto {
         chain: "base".to_owned(),
         account: "0xuser".to_owned(),
@@ -243,10 +247,39 @@ fn supply_result_dto_serializes_with_approval() {
         amount_display: "1.0 USDC".to_owned(),
         tx_hash: "0xtx".to_owned(),
         approval_tx_hash: Some("0xapproval".to_owned()),
+        execution_path: "erc20".to_owned(),
+        gateway_address: None,
     };
     let json = serde_json::to_value(&dto).unwrap();
     assert_eq!(json["asset_symbol"], "USDC");
     assert_eq!(json["approval_tx_hash"], "0xapproval");
+    assert_eq!(json["execution_path"], "erc20");
+    // gateway_address is skipped when None.
+    assert!(json.get("gateway_address").is_none());
+}
+
+#[test]
+fn supply_result_dto_serializes_native_gateway_path() {
+    let dto = SupplyResultDto {
+        chain: "ethereum".to_owned(),
+        account: "0xuser".to_owned(),
+        asset_symbol: "ETH".to_owned(),
+        asset_address: "0xweth_underlying".to_owned(),
+        amount: "1000000000000000000".to_owned(),
+        amount_display: "1.0 ETH".to_owned(),
+        tx_hash: "0xtx".to_owned(),
+        approval_tx_hash: None,
+        execution_path: "native_gateway".to_owned(),
+        gateway_address: Some("0xgateway".to_owned()),
+    };
+    let json = serde_json::to_value(&dto).unwrap();
+    assert_eq!(json["asset_symbol"], "ETH");
+    assert_eq!(json["execution_path"], "native_gateway");
+    assert_eq!(json["gateway_address"], "0xgateway");
+    // asset_address is the WETH underlying, not the gateway.
+    assert_eq!(json["asset_address"], "0xweth_underlying");
+    // No approval needed for native supply.
+    assert!(json["approval_tx_hash"].is_null());
 }
 
 #[test]
@@ -260,13 +293,15 @@ fn supply_result_dto_null_approval_when_not_needed() {
         amount_display: "1.0 USDC".to_owned(),
         tx_hash: "0xtx".to_owned(),
         approval_tx_hash: None,
+        execution_path: "erc20".to_owned(),
+        gateway_address: None,
     };
     let json = serde_json::to_value(&dto).unwrap();
     assert!(json["approval_tx_hash"].is_null());
 }
 
 #[test]
-fn withdraw_result_dto_serializes() {
+fn withdraw_result_dto_serializes_erc20_path() {
     let dto = WithdrawResultDto {
         chain: "ethereum".to_owned(),
         account: "0xuser".to_owned(),
@@ -275,10 +310,105 @@ fn withdraw_result_dto_serializes() {
         amount_requested: "1000000000000000000".to_owned(),
         amount_requested_display: "1.0 DAI".to_owned(),
         tx_hash: "0xtx".to_owned(),
+        execution_path: "erc20".to_owned(),
+        gateway_address: None,
+        approval_tx_hash: None,
     };
     let json = serde_json::to_value(&dto).unwrap();
     assert_eq!(json["asset_symbol"], "DAI");
     assert_eq!(json["amount_requested_display"], "1.0 DAI");
+    assert_eq!(json["execution_path"], "erc20");
+    assert!(json.get("gateway_address").is_none());
+    assert!(json.get("approval_tx_hash").is_none());
+}
+
+#[test]
+fn withdraw_result_dto_serializes_native_gateway_path() {
+    let dto = WithdrawResultDto {
+        chain: "ethereum".to_owned(),
+        account: "0xuser".to_owned(),
+        asset_symbol: "ETH".to_owned(),
+        asset_address: "0xweth_underlying".to_owned(),
+        amount_requested: "1000000000000000000".to_owned(),
+        amount_requested_display: "1.0 ETH".to_owned(),
+        tx_hash: "0xtx".to_owned(),
+        execution_path: "native_gateway".to_owned(),
+        gateway_address: Some("0xgateway".to_owned()),
+        approval_tx_hash: Some("0xapproval".to_owned()),
+    };
+    let json = serde_json::to_value(&dto).unwrap();
+    assert_eq!(json["asset_symbol"], "ETH");
+    assert_eq!(json["execution_path"], "native_gateway");
+    assert_eq!(json["gateway_address"], "0xgateway");
+    assert_eq!(json["asset_address"], "0xweth_underlying");
+    assert_eq!(json["approval_tx_hash"], "0xapproval");
+}
+
+// ---------------------------------------------------------------------------
+// Native ETH alias handling
+// ---------------------------------------------------------------------------
+
+#[test]
+fn is_native_eth_accepts_eth() {
+    assert!(crate::cmd::is_native_eth("ETH"));
+    assert!(crate::cmd::is_native_eth("eth"));
+    assert!(crate::cmd::is_native_eth("Eth"));
+    assert!(crate::cmd::is_native_eth(" ETH "));
+}
+
+#[test]
+fn is_native_eth_accepts_native() {
+    assert!(crate::cmd::is_native_eth("NATIVE"));
+    assert!(crate::cmd::is_native_eth("native"));
+}
+
+#[test]
+fn is_native_eth_rejects_weth() {
+    assert!(!crate::cmd::is_native_eth("WETH"));
+    assert!(!crate::cmd::is_native_eth("weth"));
+}
+
+#[test]
+fn is_native_eth_rejects_other_tokens() {
+    assert!(!crate::cmd::is_native_eth("USDC"));
+    assert!(!crate::cmd::is_native_eth("DAI"));
+    assert!(!crate::cmd::is_native_eth(
+        "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2"
+    ));
+}
+
+// ---------------------------------------------------------------------------
+// Gateway address verification against address book
+// ---------------------------------------------------------------------------
+
+#[test]
+fn ethereum_weth_gateway_matches_known() {
+    let market = addresses::market_for_chain(EvmChain::Ethereum).unwrap();
+    assert_eq!(
+        format!("{:#x}", market.weth_gateway),
+        "0xd01607c3c5ecaba394d8be377a08590149325722"
+    );
+}
+
+#[test]
+fn ethereum_weth_underlying_matches_known() {
+    let market = addresses::market_for_chain(EvmChain::Ethereum).unwrap();
+    assert_eq!(
+        format!("{:#x}", market.weth_underlying),
+        "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2"
+    );
+}
+
+#[test]
+fn gateway_and_underlying_differ_per_chain() {
+    for market in addresses::all_markets() {
+        assert_ne!(
+            market.weth_gateway,
+            market.weth_underlying,
+            "Gateway and WETH underlying must differ on {}",
+            market.chain.canonical_name()
+        );
+    }
 }
 
 // ---------------------------------------------------------------------------

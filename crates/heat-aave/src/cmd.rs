@@ -196,16 +196,27 @@ async fn health(args: HealthArgs, ctx: &Ctx) -> Result<(), HeatError> {
 // Write commands
 // ---------------------------------------------------------------------------
 
+/// Returns true if the asset string refers to native ETH (not WETH).
+pub(crate) fn is_native_eth(asset: &str) -> bool {
+    let s = asset.trim().to_uppercase();
+    s == "ETH" || s == "NATIVE"
+}
+
 async fn supply(args: SupplyArgs, ctx: &Ctx) -> Result<(), HeatError> {
     let chain = resolve_chain(args.chain.as_deref(), ctx)?;
     let market = addresses::market_for_chain(chain)?;
     let rpc_url = heat_evm::rpc::resolve_rpc_url(ctx, chain, args.rpc.as_deref(), Some("aave"))?;
 
-    // Resolve addresses from provider, then resolve asset.
-    let read_prov = heat_evm::signer::read_provider(chain, &rpc_url).await?;
-    let resolved = resolver::resolve(&read_prov, market).await?;
-    let (asset_addr, symbol, decimals) =
-        crate::read::resolve_asset(read_prov, &resolved, &args.asset).await?;
+    let native_eth = is_native_eth(&args.asset);
+
+    // Native ETH uses 18 decimals; ERC-20 path resolves from on-chain.
+    let (asset_addr, symbol, decimals) = if native_eth {
+        (alloy::primitives::Address::ZERO, "ETH".to_owned(), 18u8)
+    } else {
+        let read_prov = heat_evm::signer::read_provider(chain, &rpc_url).await?;
+        let resolved = resolver::resolve(&read_prov, market).await?;
+        crate::read::resolve_asset(read_prov, &resolved, &args.asset).await?
+    };
 
     // Parse amount.
     let amount = heat_evm::amount::parse_units(&args.amount, decimals)?;
@@ -219,11 +230,16 @@ async fn supply(args: SupplyArgs, ctx: &Ctx) -> Result<(), HeatError> {
 
     // Dry-run check.
     if ctx.dry_run {
-        DryRunPreview::new("aave", "supply")
-            .param("chain", chain.canonical_name())
-            .param("asset", &format!("{symbol} ({:#x})", asset_addr))
-            .param("amount", &amount_display)
-            .display();
+        let mut preview = DryRunPreview::new("aave", "supply");
+        preview = preview.param("chain", chain.canonical_name());
+        if native_eth {
+            preview = preview
+                .param("asset", "ETH (native → WETH Gateway)")
+                .param("gateway", &format!("{:#x}", market.weth_gateway));
+        } else {
+            preview = preview.param("asset", &format!("{symbol} ({:#x})", asset_addr));
+        }
+        preview.param("amount", &amount_display).display();
         return Ok(());
     }
 
@@ -234,41 +250,76 @@ async fn supply(args: SupplyArgs, ctx: &Ctx) -> Result<(), HeatError> {
     let wallet_prov = heat_evm::signer::wallet_provider(ctx, chain, &rpc_url).await?;
     let user = heat_evm::signer::resolve_eoa_address(ctx)?;
 
-    // Check and handle ERC-20 approval.
-    let current_allowance =
-        heat_evm::erc20::allowance(&wallet_prov, asset_addr, user, resolved.pool).await?;
-
-    let mut approval_tx = None;
-    if current_allowance < amount {
+    if native_eth {
+        // Native ETH path: WETH Gateway wraps and supplies in one tx. No approval needed.
+        let resolved = resolver::resolve(&wallet_prov, market).await?;
         ctx.output
-            .diagnostic(&format!("Approving {symbol} for Aave Pool..."));
+            .diagnostic(&format!("Supplying {amount_display} via WETH Gateway..."));
+        let tx_hash = crate::write::supply_eth(
+            &wallet_prov,
+            market.weth_gateway,
+            resolved.pool,
+            amount,
+            user,
+        )
+        .await?;
+
+        let dto = SupplyResultDto {
+            chain: chain.canonical_name().to_owned(),
+            account: format!("{:#x}", user),
+            asset_symbol: "ETH".to_owned(),
+            asset_address: format!("{:#x}", market.weth_underlying),
+            amount: amount.to_string(),
+            amount_display,
+            tx_hash: format!("{:#x}", tx_hash),
+            approval_tx_hash: None,
+            execution_path: "native_gateway".to_owned(),
+            gateway_address: Some(format!("{:#x}", market.weth_gateway)),
+        };
+
+        ctx.output
+            .write_data(&dto, Some(&pretty_supply))
+            .map_err(io_err)
+    } else {
+        // ERC-20 path: approve + Pool.supply().
+        let resolved = resolver::resolve(&wallet_prov, market).await?;
+
+        let current_allowance =
+            heat_evm::erc20::allowance(&wallet_prov, asset_addr, user, resolved.pool).await?;
+
+        let mut approval_tx = None;
+        if current_allowance < amount {
+            ctx.output
+                .diagnostic(&format!("Approving {symbol} for Aave Pool..."));
+            let tx_hash =
+                heat_evm::erc20::approve(&wallet_prov, asset_addr, resolved.pool, amount).await?;
+            ctx.output
+                .diagnostic(&format!("Approval tx: {:#x}", tx_hash));
+            approval_tx = Some(format!("{:#x}", tx_hash));
+        }
+
+        ctx.output
+            .diagnostic(&format!("Supplying {amount_display}..."));
         let tx_hash =
-            heat_evm::erc20::approve(&wallet_prov, asset_addr, resolved.pool, amount).await?;
+            crate::write::supply(&wallet_prov, resolved.pool, asset_addr, amount, user).await?;
+
+        let dto = SupplyResultDto {
+            chain: chain.canonical_name().to_owned(),
+            account: format!("{:#x}", user),
+            asset_symbol: symbol,
+            asset_address: format!("{:#x}", asset_addr),
+            amount: amount.to_string(),
+            amount_display,
+            tx_hash: format!("{:#x}", tx_hash),
+            approval_tx_hash: approval_tx,
+            execution_path: "erc20".to_owned(),
+            gateway_address: None,
+        };
+
         ctx.output
-            .diagnostic(&format!("Approval tx: {:#x}", tx_hash));
-        approval_tx = Some(format!("{:#x}", tx_hash));
+            .write_data(&dto, Some(&pretty_supply))
+            .map_err(io_err)
     }
-
-    // Execute supply.
-    ctx.output
-        .diagnostic(&format!("Supplying {amount_display}..."));
-    let tx_hash =
-        crate::write::supply(&wallet_prov, resolved.pool, asset_addr, amount, user).await?;
-
-    let dto = SupplyResultDto {
-        chain: chain.canonical_name().to_owned(),
-        account: format!("{:#x}", user),
-        asset_symbol: symbol,
-        asset_address: format!("{:#x}", asset_addr),
-        amount: amount.to_string(),
-        amount_display,
-        tx_hash: format!("{:#x}", tx_hash),
-        approval_tx_hash: approval_tx,
-    };
-
-    ctx.output
-        .write_data(&dto, Some(&pretty_supply))
-        .map_err(io_err)
 }
 
 async fn withdraw(args: WithdrawArgs, ctx: &Ctx) -> Result<(), HeatError> {
@@ -276,11 +327,16 @@ async fn withdraw(args: WithdrawArgs, ctx: &Ctx) -> Result<(), HeatError> {
     let market = addresses::market_for_chain(chain)?;
     let rpc_url = heat_evm::rpc::resolve_rpc_url(ctx, chain, args.rpc.as_deref(), Some("aave"))?;
 
-    // Resolve addresses from provider, then resolve asset.
-    let read_prov = heat_evm::signer::read_provider(chain, &rpc_url).await?;
-    let resolved = resolver::resolve(&read_prov, market).await?;
-    let (asset_addr, symbol, decimals) =
-        crate::read::resolve_asset(read_prov, &resolved, &args.asset).await?;
+    let native_eth = is_native_eth(&args.asset);
+
+    // Native ETH uses 18 decimals; ERC-20 path resolves from on-chain.
+    let (asset_addr, symbol, decimals) = if native_eth {
+        (market.weth_underlying, "ETH".to_owned(), 18u8)
+    } else {
+        let read_prov = heat_evm::signer::read_provider(chain, &rpc_url).await?;
+        let resolved = resolver::resolve(&read_prov, market).await?;
+        crate::read::resolve_asset(read_prov, &resolved, &args.asset).await?
+    };
 
     // Parse amount.
     let amount = heat_evm::amount::parse_units(&args.amount, decimals)?;
@@ -294,11 +350,16 @@ async fn withdraw(args: WithdrawArgs, ctx: &Ctx) -> Result<(), HeatError> {
 
     // Dry-run check.
     if ctx.dry_run {
-        DryRunPreview::new("aave", "withdraw")
-            .param("chain", chain.canonical_name())
-            .param("asset", &format!("{symbol} ({:#x})", asset_addr))
-            .param("amount", &amount_display)
-            .display();
+        let mut preview = DryRunPreview::new("aave", "withdraw");
+        preview = preview.param("chain", chain.canonical_name());
+        if native_eth {
+            preview = preview
+                .param("asset", "ETH (native ← WETH Gateway)")
+                .param("gateway", &format!("{:#x}", market.weth_gateway));
+        } else {
+            preview = preview.param("asset", &format!("{symbol} ({:#x})", asset_addr));
+        }
+        preview.param("amount", &amount_display).display();
         return Ok(());
     }
 
@@ -309,25 +370,93 @@ async fn withdraw(args: WithdrawArgs, ctx: &Ctx) -> Result<(), HeatError> {
     let wallet_prov = heat_evm::signer::wallet_provider(ctx, chain, &rpc_url).await?;
     let user = heat_evm::signer::resolve_eoa_address(ctx)?;
 
-    // Execute withdraw.
-    ctx.output
-        .diagnostic(&format!("Withdrawing {amount_display}..."));
-    let tx_hash =
-        crate::write::withdraw(&wallet_prov, resolved.pool, asset_addr, amount, user).await?;
+    if native_eth {
+        // Native ETH path: gateway withdraws WETH and unwraps to ETH.
+        // The gateway needs approval to spend the user's aWETH tokens.
+        let resolved = resolver::resolve(&wallet_prov, market).await?;
 
-    let dto = WithdrawResultDto {
-        chain: chain.canonical_name().to_owned(),
-        account: format!("{:#x}", user),
-        asset_symbol: symbol,
-        asset_address: format!("{:#x}", asset_addr),
-        amount_requested: amount.to_string(),
-        amount_requested_display: amount_display,
-        tx_hash: format!("{:#x}", tx_hash),
-    };
+        // Look up the aWETH token address for approval.
+        let data_prov =
+            crate::contracts::IPoolDataProvider::new(resolved.data_provider, &wallet_prov);
+        let token_addrs = data_prov
+            .getReserveTokensAddresses(market.weth_underlying)
+            .call()
+            .await
+            .map_err(|e| {
+                HeatError::network(
+                    "aave_resolve_aweth",
+                    format!("Failed to resolve aWETH token address: {e}"),
+                )
+            })?;
+        let a_weth = token_addrs.aTokenAddress;
 
-    ctx.output
-        .write_data(&dto, Some(&pretty_withdraw))
-        .map_err(io_err)
+        // Approve gateway to spend aWETH.
+        let current_allowance =
+            heat_evm::erc20::allowance(&wallet_prov, a_weth, user, market.weth_gateway).await?;
+
+        let mut approval_tx = None;
+        if current_allowance < amount {
+            ctx.output.diagnostic("Approving aWETH for WETH Gateway...");
+            let tx_hash =
+                heat_evm::erc20::approve(&wallet_prov, a_weth, market.weth_gateway, amount).await?;
+            ctx.output
+                .diagnostic(&format!("Approval tx: {:#x}", tx_hash));
+            approval_tx = Some(format!("{:#x}", tx_hash));
+        }
+
+        ctx.output
+            .diagnostic(&format!("Withdrawing {amount_display} via WETH Gateway..."));
+        let tx_hash = crate::write::withdraw_eth(
+            &wallet_prov,
+            market.weth_gateway,
+            resolved.pool,
+            amount,
+            user,
+        )
+        .await?;
+
+        let dto = WithdrawResultDto {
+            chain: chain.canonical_name().to_owned(),
+            account: format!("{:#x}", user),
+            asset_symbol: "ETH".to_owned(),
+            asset_address: format!("{:#x}", market.weth_underlying),
+            amount_requested: amount.to_string(),
+            amount_requested_display: amount_display,
+            tx_hash: format!("{:#x}", tx_hash),
+            execution_path: "native_gateway".to_owned(),
+            gateway_address: Some(format!("{:#x}", market.weth_gateway)),
+            approval_tx_hash: approval_tx,
+        };
+
+        ctx.output
+            .write_data(&dto, Some(&pretty_withdraw))
+            .map_err(io_err)
+    } else {
+        // ERC-20 path.
+        let resolved = resolver::resolve(&wallet_prov, market).await?;
+
+        ctx.output
+            .diagnostic(&format!("Withdrawing {amount_display}..."));
+        let tx_hash =
+            crate::write::withdraw(&wallet_prov, resolved.pool, asset_addr, amount, user).await?;
+
+        let dto = WithdrawResultDto {
+            chain: chain.canonical_name().to_owned(),
+            account: format!("{:#x}", user),
+            asset_symbol: symbol,
+            asset_address: format!("{:#x}", asset_addr),
+            amount_requested: amount.to_string(),
+            amount_requested_display: amount_display,
+            tx_hash: format!("{:#x}", tx_hash),
+            execution_path: "erc20".to_owned(),
+            gateway_address: None,
+            approval_tx_hash: None,
+        };
+
+        ctx.output
+            .write_data(&dto, Some(&pretty_withdraw))
+            .map_err(io_err)
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -424,14 +553,23 @@ fn pretty_supply(dto: &SupplyResultDto) -> String {
         "Supplied {} on {}\n\
          Account: {}\n\
          Asset:   {} ({})\n\
+         Path:    {}\n\
          Tx:      {}",
         dto.amount_display,
         dto.chain,
         dto.account,
         dto.asset_symbol,
         dto.asset_address,
+        if dto.execution_path == "native_gateway" {
+            "native ETH → WETH Gateway"
+        } else {
+            "ERC-20 → Pool"
+        },
         dto.tx_hash,
     );
+    if let Some(gateway) = &dto.gateway_address {
+        out.push_str(&format!("\nGateway: {gateway}"));
+    }
     if let Some(approval) = &dto.approval_tx_hash {
         out.push_str(&format!("\nApproval tx: {approval}"));
     }
@@ -439,18 +577,31 @@ fn pretty_supply(dto: &SupplyResultDto) -> String {
 }
 
 fn pretty_withdraw(dto: &WithdrawResultDto) -> String {
-    format!(
+    let mut out = format!(
         "Withdrew {} on {}\n\
          Account: {}\n\
          Asset:   {} ({})\n\
+         Path:    {}\n\
          Tx:      {}",
         dto.amount_requested_display,
         dto.chain,
         dto.account,
         dto.asset_symbol,
         dto.asset_address,
+        if dto.execution_path == "native_gateway" {
+            "WETH Gateway → native ETH"
+        } else {
+            "Pool → ERC-20"
+        },
         dto.tx_hash,
-    )
+    );
+    if let Some(gateway) = &dto.gateway_address {
+        out.push_str(&format!("\nGateway: {gateway}"));
+    }
+    if let Some(approval) = &dto.approval_tx_hash {
+        out.push_str(&format!("\nApproval tx: {approval}"));
+    }
+    out
 }
 
 // ---------------------------------------------------------------------------

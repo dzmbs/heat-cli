@@ -16,14 +16,32 @@ heat aave supply USDC 1000 --chain ethereum --account main --dry-run
 heat aave withdraw USDC 500 --chain arbitrum --account main --dry-run
 ```
 
+## Native ETH support
+
+Heat supports supplying and withdrawing native ETH via Aave's WrappedTokenGatewayV3.
+Use `ETH` as the asset symbol:
+
+```bash
+# Supply native ETH (wraps to WETH via gateway in one tx, no approval needed)
+heat aave supply ETH 0.5 --chain ethereum --account main --dry-run
+
+# Withdraw as native ETH (unwraps from WETH via gateway, approves aWETH automatically)
+heat aave withdraw ETH 0.5 --chain ethereum --account main --dry-run
+```
+
+- `ETH` means native ETH routed through the WETH Gateway (one transaction).
+- `WETH` means the ERC-20 WETH token directly via the Pool (standard approve + supply/withdraw).
+- For native ETH withdraw, Heat automatically approves the gateway to spend your aWETH tokens.
+- JSON output includes `execution_path` ("native_gateway" or "erc20") and `gateway_address` for transparency.
+
 ## Current scope
 
 Supported now:
 - `markets`
 - `positions`
 - `health`
-- `supply`
-- `withdraw`
+- `supply` (ERC-20 tokens and native ETH)
+- `withdraw` (ERC-20 tokens and native ETH)
 
 Not supported yet:
 - `borrow`
@@ -49,6 +67,12 @@ heat aave health --chain base --account main
 
 # Preview a supply transaction
 heat aave supply USDC 1000 --chain arbitrum --account main --dry-run
+
+# Supply native ETH
+heat aave supply ETH 1.0 --chain ethereum --account main
+
+# Withdraw as native ETH
+heat aave withdraw ETH 0.5 --chain ethereum --account main
 ```
 
 ## Output

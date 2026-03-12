@@ -50,6 +50,22 @@ sol! {
 }
 
 // ---------------------------------------------------------------------------
+// IWrappedTokenGatewayV3 — native ETH supply/withdraw via WETH wrapping
+// ---------------------------------------------------------------------------
+
+sol! {
+    #[allow(missing_docs)]
+    #[sol(rpc)]
+    interface IWrappedTokenGatewayV3 {
+        /// Wrap ETH and supply WETH to the Pool in one transaction.
+        function depositETH(address pool, address onBehalfOf, uint16 referralCode) external payable;
+
+        /// Withdraw WETH from the Pool and unwrap to native ETH.
+        function withdrawETH(address pool, uint256 amount, address to) external;
+    }
+}
+
+// ---------------------------------------------------------------------------
 // IPoolDataProvider (AaveProtocolDataProvider) — reserve config & user data
 // ---------------------------------------------------------------------------
 

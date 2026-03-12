@@ -17,6 +17,10 @@ pub struct AaveMarket {
     pub pool: Address,
     /// Well-known DataProvider address (for tests/validation only — runtime uses resolver).
     pub protocol_data_provider: Address,
+    /// WrappedTokenGatewayV3 for native ETH supply/withdraw.
+    pub weth_gateway: Address,
+    /// WETH underlying token address (the actual reserve on Aave).
+    pub weth_underlying: Address,
 }
 
 /// Look up the Aave V3 market for a given chain.
@@ -42,6 +46,8 @@ static MARKETS: [AaveMarket; 3] = [
         pool_addresses_provider: address!("2f39d218133AFaB8F2B819B1066c7E434Ad94E9e"),
         pool: address!("87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2"),
         protocol_data_provider: address!("0a16f2FCC0D44FaE41cc54e079281D84A363bECD"),
+        weth_gateway: address!("d01607c3C5eCABa394D8be377a08590149325722"),
+        weth_underlying: address!("C02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2"),
     },
     // Arbitrum
     AaveMarket {
@@ -49,6 +55,8 @@ static MARKETS: [AaveMarket; 3] = [
         pool_addresses_provider: address!("a97684ead0e402dC232d5A977953DF7ECBaB3CDb"),
         pool: address!("794a61358D6845594F94dc1DB02A252b5b4814aD"),
         protocol_data_provider: address!("243Aa95cAC2a25651eda86e80bEe66114413c43b"),
+        weth_gateway: address!("5283BEcEd7ADF6D003225C13896E536f2D4264FF"),
+        weth_underlying: address!("82aF49447D8a07e3bd95BD0d56f35241523fBab1"),
     },
     // Base
     AaveMarket {
@@ -56,5 +64,7 @@ static MARKETS: [AaveMarket; 3] = [
         pool_addresses_provider: address!("e20fCBdBfFC4Dd138cE8b2E6FBb6CB49777ad64D"),
         pool: address!("A238Dd80C259a72e81d7e4664a9801593F98d1c5"),
         protocol_data_provider: address!("0F43731EB8d45A581f4a36DD74F5f358bc90C73A"),
+        weth_gateway: address!("a0d9C1E9E48Ca30c8d8C3B5D69FF5dc1f6DFfC24"),
+        weth_underlying: address!("4200000000000000000000000000000000000006"),
     },
 ];

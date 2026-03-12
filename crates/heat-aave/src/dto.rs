@@ -109,6 +109,11 @@ pub struct SupplyResultDto {
     pub amount_display: String,
     pub tx_hash: String,
     pub approval_tx_hash: Option<String>,
+    /// "erc20" for standard token supply, "native_gateway" for ETH via WETH Gateway.
+    pub execution_path: String,
+    /// WETH Gateway address when execution_path is "native_gateway", null otherwise.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub gateway_address: Option<String>,
 }
 
 // ---------------------------------------------------------------------------
@@ -124,4 +129,12 @@ pub struct WithdrawResultDto {
     pub amount_requested: String,
     pub amount_requested_display: String,
     pub tx_hash: String,
+    /// "erc20" for standard token withdraw, "native_gateway" for ETH via WETH Gateway.
+    pub execution_path: String,
+    /// WETH Gateway address when execution_path is "native_gateway", null otherwise.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub gateway_address: Option<String>,
+    /// aWETH approval tx hash (needed for native withdraw via gateway).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub approval_tx_hash: Option<String>,
 }
