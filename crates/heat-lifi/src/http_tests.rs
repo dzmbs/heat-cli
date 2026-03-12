@@ -292,11 +292,14 @@ async fn routes_posts_json_body_with_camel_case_keys() {
     };
     let resp = client.routes(&params).await.unwrap();
 
-    assert_eq!(resp.routes.len(), 1);
-    assert_eq!(resp.routes[0].id, "route-1");
-    assert_eq!(resp.routes[0].from_chain_id, 1);
-    assert_eq!(resp.routes[0].to_chain_id, 42161);
-    assert_eq!(resp.routes[0].tags, vec!["CHEAPEST"]);
+    assert_eq!(resp.typed.routes.len(), 1);
+    assert_eq!(resp.typed.routes[0].id, "route-1");
+    assert_eq!(resp.typed.routes[0].from_chain_id, 1);
+    assert_eq!(resp.typed.routes[0].to_chain_id, 42161);
+    assert_eq!(resp.typed.routes[0].tags, vec!["CHEAPEST"]);
+    // Raw routes should also be preserved.
+    assert_eq!(resp.raw_routes.len(), 1);
+    assert_eq!(resp.raw_routes[0]["id"], "route-1");
 }
 
 #[tokio::test]
@@ -324,7 +327,7 @@ async fn routes_omits_from_address_when_none() {
         slippage: None,
     };
     let resp = client.routes(&params).await.unwrap();
-    assert_eq!(resp.routes.len(), 1);
+    assert_eq!(resp.typed.routes.len(), 1);
 }
 
 // ---------------------------------------------------------------------------

@@ -275,8 +275,8 @@ async fn routes(args: RoutesArgs, ctx: &Ctx) -> Result<(), HeatError> {
         from_amount: args.amount,
     };
 
-    let raw = client.routes(&params).await?;
-    let dto = map::map_routes(&raw, summary, &chain_types);
+    let bundle = client.routes(&params).await?;
+    let dto = map::map_routes(&bundle.typed, summary, &chain_types);
 
     ctx.output
         .write_data(&dto, Some(&pretty_routes))
@@ -370,9 +370,9 @@ async fn bridge(args: BridgeArgs, ctx: &Ctx) -> Result<(), HeatError> {
         from_address: Some(sender_hex.clone()),
         slippage: args.slippage,
     };
-    let routes_resp = client.routes(&routes_params).await?;
+    let routes_bundle = client.routes(&routes_params).await?;
 
-    if routes_resp.routes.is_empty() {
+    if routes_bundle.typed.routes.is_empty() {
         return Err(HeatError::protocol(
             "no_routes",
             format!(
@@ -394,7 +394,7 @@ async fn bridge(args: BridgeArgs, ctx: &Ctx) -> Result<(), HeatError> {
         to_token: to_token_addr.clone(),
         from_amount: amount_str.clone(),
     };
-    let all_routes = map::map_routes(&routes_resp, summary, &chain_types);
+    let all_routes = map::map_routes(&routes_bundle.typed, summary, &chain_types);
     let executable: Vec<_> = all_routes
         .routes
         .iter()
@@ -475,32 +475,25 @@ async fn bridge(args: BridgeArgs, ctx: &Ctx) -> Result<(), HeatError> {
         heat_evm::rpc::resolve_rpc_url(ctx, from_chain, args.rpc.as_deref(), Some("lifi"))?;
     let wallet_prov = heat_evm::wallet_provider(ctx, from_chain, &rpc_url).await?;
 
-    // 12. Use the raw route from the original fetch (route IDs are not stable across requests).
-    let raw_route = routes_resp
-        .routes
-        .into_iter()
-        .nth(route_idx)
-        .ok_or_else(|| {
-            HeatError::protocol("route_expired", "Selected route is no longer available")
-        })?;
+    // 12. Get the raw route JSON for pass-through to stepTransaction.
+    let raw_route_value = routes_bundle.raw_routes.get(route_idx).ok_or_else(|| {
+        HeatError::protocol("route_expired", "Selected route is no longer available")
+    })?;
 
-    // 13. Execute each step.
+    let raw_steps = raw_route_value["steps"]
+        .as_array()
+        .ok_or_else(|| HeatError::protocol("bad_response", "Route has no steps array"))?;
+
+    // 13. Execute each step using raw JSON (no field loss from typed round-trip).
     let mut step_results = Vec::new();
 
-    for (step_idx, raw_step) in raw_route.steps.iter().enumerate() {
-        let step_label = format!(
-            "step {}/{} ({})",
-            step_idx + 1,
-            raw_route.steps.len(),
-            raw_step.tool,
-        );
+    for (step_idx, step_value) in raw_steps.iter().enumerate() {
+        let tool = step_value["tool"].as_str().unwrap_or("unknown");
+        let step_label = format!("step {}/{} ({})", step_idx + 1, raw_steps.len(), tool);
         ctx.output.diagnostic(&format!("Executing {step_label}..."));
 
-        // Build step JSON for the stepTransaction API.
-        // Inject action.fromAddress — required by LI.FI for sender-sensitive flows.
-        let mut step_json = serde_json::to_value(raw_step).map_err(|e| {
-            HeatError::internal("step_serialize", format!("Failed to serialize step: {e}"))
-        })?;
+        // Clone the raw step and inject fromAddress — required by LI.FI.
+        let mut step_json = step_value.clone();
         if let Some(action) = step_json.get_mut("action") {
             action["fromAddress"] = serde_json::Value::String(sender_hex.clone());
         }
@@ -565,7 +558,7 @@ async fn bridge(args: BridgeArgs, ctx: &Ctx) -> Result<(), HeatError> {
                 if current_allowance < amount_to_approve {
                     ctx.output.diagnostic(&format!(
                         "Approving {} for {}...",
-                        step_tx.action.from_token.symbol, raw_step.tool,
+                        step_tx.action.from_token.symbol, tool,
                     ));
                     let tx_hash = heat_evm::erc20::approve(
                         &wallet_prov,
@@ -649,8 +642,8 @@ async fn bridge(args: BridgeArgs, ctx: &Ctx) -> Result<(), HeatError> {
             .diagnostic(&format!("{step_label} complete: {tx_hash}"));
 
         step_results.push(StepResultDto {
-            step_type: raw_step.step_type.clone(),
-            tool: raw_step.tool.clone(),
+            step_type: step_value["type"].as_str().unwrap_or("unknown").to_owned(),
+            tool: tool.to_owned(),
             tx_hash,
             approval_tx_hash,
         });

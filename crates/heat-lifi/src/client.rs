@@ -5,7 +5,7 @@
 /// Callers receive typed response structs that `map.rs` then converts to
 /// Heat-owned DTOs.
 use heat_core::error::HeatError;
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 
 pub const LIFI_BASE_URL: &str = "https://li.quest/v1";
 
@@ -13,7 +13,7 @@ pub const LIFI_BASE_URL: &str = "https://li.quest/v1";
 // Raw API response shapes (internal — not part of Heat's output contract)
 // ---------------------------------------------------------------------------
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize)]
 pub struct RawToken {
     pub address: String,
     pub symbol: String,
@@ -22,10 +22,7 @@ pub struct RawToken {
     #[serde(rename = "chainId")]
     pub chain_id: u64,
     #[serde(rename = "logoURI")]
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub logo_uri: Option<String>,
-    #[serde(flatten)]
-    pub extra: std::collections::HashMap<String, serde_json::Value>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -80,26 +77,21 @@ pub struct ToolsResponse {
     pub exchanges: Vec<RawExchangeTool>,
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize)]
 pub struct RawToolDetails {
     pub key: String,
     pub name: String,
     #[serde(rename = "logoURI")]
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub logo_uri: Option<String>,
-    #[serde(flatten)]
-    pub extra: std::collections::HashMap<String, serde_json::Value>,
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize)]
 pub struct RawFee {
     pub amount: String,
     pub token: RawToken,
-    #[serde(flatten)]
-    pub extra: std::collections::HashMap<String, serde_json::Value>,
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize)]
 pub struct RawEstimate {
     #[serde(rename = "fromAmount")]
     pub from_amount: String,
@@ -111,16 +103,13 @@ pub struct RawEstimate {
     pub execution_duration: f64,
     #[serde(rename = "feeCosts", default)]
     pub fee_costs: Vec<RawFee>,
-    /// Spender address that needs ERC-20 approval (absent for native tokens).
     #[serde(rename = "approvalAddress")]
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub approval_address: Option<String>,
-    #[serde(flatten)]
-    pub extra: std::collections::HashMap<String, serde_json::Value>,
 }
 
-/// A LI.FI step (used both in quotes and route steps).
-#[derive(Debug, Deserialize, Serialize)]
+/// A LI.FI step — typed fields for display/mapping only.
+/// For execution, use the raw `serde_json::Value` from `RoutesBundle`.
+#[derive(Debug, Deserialize)]
 pub struct RawStep {
     #[serde(rename = "type")]
     pub step_type: String,
@@ -129,13 +118,9 @@ pub struct RawStep {
     pub tool_details: RawToolDetails,
     pub action: RawStepAction,
     pub estimate: RawEstimate,
-    /// Preserve all other fields (includedSteps, id, integrator, etc.)
-    /// so the full step can be sent back to /advanced/stepTransaction.
-    #[serde(flatten)]
-    pub extra: std::collections::HashMap<String, serde_json::Value>,
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize)]
 pub struct RawStepAction {
     #[serde(rename = "fromToken")]
     pub from_token: RawToken,
@@ -147,17 +132,20 @@ pub struct RawStepAction {
     pub from_chain_id: u64,
     #[serde(rename = "toChainId")]
     pub to_chain_id: u64,
-    /// Sender address — required by `/advanced/stepTransaction`.
-    /// Absent in route responses; must be injected before calling stepTransaction.
     #[serde(rename = "fromAddress")]
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub from_address: Option<String>,
-    #[serde(flatten)]
-    pub extra: std::collections::HashMap<String, serde_json::Value>,
 }
 
 /// LI.FI returns the quote as a single step object.
 pub type QuoteResponse = RawStep;
+
+/// Routes response with both typed data (for display) and raw JSON (for execution).
+/// The typed fields are used by `map.rs` for DTOs. The raw values are passed
+/// untouched to `/advanced/stepTransaction` so no fields are lost in round-trip.
+pub struct RoutesBundle {
+    pub typed: RoutesResponse,
+    pub raw_routes: Vec<serde_json::Value>,
+}
 
 #[derive(Debug, Deserialize)]
 pub struct RawRoute {
@@ -405,6 +393,38 @@ impl LifiClient {
         })
     }
 
+    /// POST that returns raw bytes — used when we need both typed and raw JSON.
+    async fn post_raw<B: serde::Serialize>(
+        &self,
+        path: &str,
+        body: &B,
+    ) -> Result<Vec<u8>, HeatError> {
+        let url = self.url(path);
+        let mut req = self.client.post(&url).json(body);
+        if let Some(key) = &self.api_key {
+            req = req.header("x-lifi-api-key", key);
+        }
+        let resp = req.send().await.map_err(|e| {
+            HeatError::network("request_failed", format!("LI.FI request failed: {e}"))
+        })?;
+
+        let status = resp.status();
+        if !status.is_success() {
+            let body_text = resp.text().await.unwrap_or_default();
+            let msg = format!("LI.FI API returned {status}: {body_text}");
+            return Err(if status.as_u16() == 429 || status.is_server_error() {
+                HeatError::network("api_error", msg)
+            } else {
+                HeatError::protocol("api_error", msg)
+            });
+        }
+
+        let bytes = resp.bytes().await.map_err(|e| {
+            HeatError::network("read_body", format!("Failed to read response body: {e}"))
+        })?;
+        Ok(bytes.to_vec())
+    }
+
     // -----------------------------------------------------------------------
     // Public API methods
     // -----------------------------------------------------------------------
@@ -440,7 +460,7 @@ impl LifiClient {
         self.get_json("quote", &query).await
     }
 
-    pub async fn routes(&self, params: &RoutesParams) -> Result<RoutesResponse, HeatError> {
+    pub async fn routes(&self, params: &RoutesParams) -> Result<RoutesBundle, HeatError> {
         #[derive(serde::Serialize)]
         #[serde(rename_all = "camelCase")]
         struct RoutesBody {
@@ -465,7 +485,22 @@ impl LifiClient {
             slippage: params.slippage,
         };
 
-        self.post_json("advanced/routes", &body).await
+        let raw_bytes = self.post_raw("advanced/routes", &body).await?;
+
+        let raw_value: serde_json::Value = serde_json::from_slice(&raw_bytes).map_err(|e| {
+            HeatError::protocol("parse_error", format!("Failed to parse routes JSON: {e}"))
+        })?;
+
+        let raw_routes = raw_value["routes"].as_array().cloned().unwrap_or_default();
+
+        let typed: RoutesResponse = serde_json::from_slice(&raw_bytes).map_err(|e| {
+            HeatError::protocol(
+                "parse_error",
+                format!("Failed to parse routes response: {e}"),
+            )
+        })?;
+
+        Ok(RoutesBundle { typed, raw_routes })
     }
 
     pub async fn status(&self, params: &StatusParams) -> Result<StatusResponse, HeatError> {
