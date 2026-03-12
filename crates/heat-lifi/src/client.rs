@@ -121,6 +121,10 @@ pub struct RawStep {
     pub tool_details: RawToolDetails,
     pub action: RawStepAction,
     pub estimate: RawEstimate,
+    /// Preserve all other fields (includedSteps, id, integrator, etc.)
+    /// so the full step can be sent back to /advanced/stepTransaction.
+    #[serde(flatten)]
+    pub extra: std::collections::HashMap<String, serde_json::Value>,
 }
 
 #[derive(Debug, Deserialize, Serialize)]

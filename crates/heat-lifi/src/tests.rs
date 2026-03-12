@@ -79,6 +79,7 @@ fn raw_step(from_chain: u64, to_chain: u64) -> RawStep {
             from_address: None,
         },
         estimate: raw_estimate(from_chain, to_chain),
+        extra: std::collections::HashMap::new(),
     }
 }
 
