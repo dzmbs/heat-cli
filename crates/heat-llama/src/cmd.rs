@@ -330,6 +330,17 @@ pub enum FeesSubcommand {
         /// Protocol slug (e.g. uniswap, aave)
         protocol: String,
     },
+    /// Show historical fee/revenue series for a protocol or chain-like target
+    History {
+        /// Protocol slug or DefiLlama target accepted by /overview/fees/{target} (e.g. hyperliquid)
+        target: String,
+        /// Data type: dailyFees, dailyRevenue, dailyHoldersRevenue
+        #[arg(long, default_value = "dailyFees")]
+        data_type: String,
+        /// Show only last N points
+        #[arg(long)]
+        limit: Option<usize>,
+    },
 }
 
 // ---------------------------------------------------------------------------
@@ -361,6 +372,14 @@ pub enum VolumesSubcommand {
         /// Protocol slug
         protocol: String,
     },
+    /// Show historical DEX volume for a specific protocol
+    DexHistory {
+        /// Protocol slug
+        protocol: String,
+        /// Show only last N points
+        #[arg(long)]
+        limit: Option<usize>,
+    },
     /// Show options volume overview
     Options {
         /// Filter by chain
@@ -377,6 +396,20 @@ pub enum VolumesSubcommand {
     Option {
         /// Protocol slug
         protocol: String,
+        /// Data type: dailyPremiumVolume, dailyNotionalVolume
+        #[arg(long)]
+        data_type: Option<String>,
+    },
+    /// Show historical options volume for a specific protocol
+    OptionHistory {
+        /// Protocol slug
+        protocol: String,
+        /// Data type: dailyPremiumVolume, dailyNotionalVolume
+        #[arg(long, default_value = "dailyNotionalVolume")]
+        data_type: String,
+        /// Show only last N points
+        #[arg(long)]
+        limit: Option<usize>,
     },
     /// Show derivatives volume overview
     Derivatives {
@@ -395,6 +428,14 @@ pub enum VolumesSubcommand {
         /// Protocol slug
         protocol: String,
     },
+    /// Show historical derivatives volume for a specific protocol
+    DerivativeHistory {
+        /// Protocol slug
+        protocol: String,
+        /// Show only last N points
+        #[arg(long)]
+        limit: Option<usize>,
+    },
     /// Show open interest overview
     OpenInterest {
         /// Sort by: volume, change_1d, name
@@ -403,6 +444,12 @@ pub enum VolumesSubcommand {
         /// Maximum number of protocol rows
         #[arg(long, default_value = "25")]
         limit: usize,
+    },
+    /// Show historical aggregate open interest series
+    OpenInterestHistory {
+        /// Show only last N points
+        #[arg(long)]
+        limit: Option<usize>,
     },
 }
 
@@ -583,26 +630,46 @@ pub async fn run(cmd: LlamaCmd, ctx: &Ctx) -> Result<(), HeatError> {
                 cmd_fees_chain(&chain, &sort, limit, ctx).await
             }
             FeesSubcommand::Protocol { protocol } => cmd_fees_protocol(&protocol, ctx).await,
+            FeesSubcommand::History {
+                target,
+                data_type,
+                limit,
+            } => cmd_fees_history(&target, &data_type, limit, ctx).await,
         },
         LlamaSubcommand::Volumes(c) => match c.command {
             VolumesSubcommand::Dexs { chain, sort, limit } => {
                 cmd_volumes_dexs(chain.as_deref(), &sort, limit, ctx).await
             }
             VolumesSubcommand::Dex { protocol } => cmd_volumes_dex_summary(&protocol, ctx).await,
+            VolumesSubcommand::DexHistory { protocol, limit } => {
+                cmd_volumes_dex_history(&protocol, limit, ctx).await
+            }
             VolumesSubcommand::Options { chain, sort, limit } => {
                 cmd_volumes_options(chain.as_deref(), &sort, limit, ctx).await
             }
-            VolumesSubcommand::Option { protocol } => {
-                cmd_volumes_option_summary(&protocol, ctx).await
-            }
+            VolumesSubcommand::Option {
+                protocol,
+                data_type,
+            } => cmd_volumes_option_summary(&protocol, data_type.as_deref(), ctx).await,
+            VolumesSubcommand::OptionHistory {
+                protocol,
+                data_type,
+                limit,
+            } => cmd_volumes_option_history(&protocol, &data_type, limit, ctx).await,
             VolumesSubcommand::Derivatives { chain, sort, limit } => {
                 cmd_volumes_derivatives(chain.as_deref(), &sort, limit, ctx).await
             }
             VolumesSubcommand::Derivative { protocol } => {
                 cmd_volumes_derivative_summary(&protocol, ctx).await
             }
+            VolumesSubcommand::DerivativeHistory { protocol, limit } => {
+                cmd_volumes_derivative_history(&protocol, limit, ctx).await
+            }
             VolumesSubcommand::OpenInterest { sort, limit } => {
                 cmd_volumes_open_interest(&sort, limit, ctx).await
+            }
+            VolumesSubcommand::OpenInterestHistory { limit } => {
+                cmd_volumes_open_interest_history(limit, ctx).await
             }
         },
         LlamaSubcommand::Yields(c) => match c.command {
@@ -1069,12 +1136,48 @@ async fn cmd_fees_protocol(protocol: &str, ctx: &Ctx) -> Result<(), HeatError> {
         .map_err(io_err)
 }
 
+async fn cmd_fees_history(
+    target: &str,
+    data_type: &str,
+    limit: Option<usize>,
+    ctx: &Ctx,
+) -> Result<(), HeatError> {
+    validate_choice("data_type", data_type, FEES_DATA_TYPE_VALUES)?;
+    let client = make_client(ctx)?;
+    let raw = client.fees_history(target, data_type).await?;
+    let mut dto = map::map_metric_history(raw, "fees", target, data_type);
+    if let Some(limit) = limit {
+        let start = dto.points.len().saturating_sub(limit);
+        dto.points = dto.points.split_off(start);
+    }
+    ctx.output
+        .write_data(&dto, Some(&pretty_metric_history))
+        .map_err(io_err)
+}
+
 async fn cmd_volumes_dex_summary(protocol: &str, ctx: &Ctx) -> Result<(), HeatError> {
     let client = make_client(ctx)?;
     let raw = client.volumes_dex_summary(protocol).await?;
     let dto = map::map_protocol_summary(raw, "dex_volume");
     ctx.output
         .write_data(&dto, Some(&pretty_protocol_summary))
+        .map_err(io_err)
+}
+
+async fn cmd_volumes_dex_history(
+    protocol: &str,
+    limit: Option<usize>,
+    ctx: &Ctx,
+) -> Result<(), HeatError> {
+    let client = make_client(ctx)?;
+    let raw = client.volumes_dex_history(protocol).await?;
+    let mut dto = map::map_metric_history_from_summary(raw, "dex_volume", protocol, "dailyVolume");
+    if let Some(limit) = limit {
+        let start = dto.points.len().saturating_sub(limit);
+        dto.points = dto.points.split_off(start);
+    }
+    ctx.output
+        .write_data(&dto, Some(&pretty_metric_history))
         .map_err(io_err)
 }
 
@@ -1095,12 +1198,38 @@ async fn cmd_volumes_options(
         .map_err(io_err)
 }
 
-async fn cmd_volumes_option_summary(protocol: &str, ctx: &Ctx) -> Result<(), HeatError> {
+async fn cmd_volumes_option_summary(
+    protocol: &str,
+    data_type: Option<&str>,
+    ctx: &Ctx,
+) -> Result<(), HeatError> {
+    if let Some(dt) = data_type {
+        validate_choice("data_type", dt, OPTIONS_DATA_TYPE_VALUES)?;
+    }
     let client = make_client(ctx)?;
-    let raw = client.volumes_option_summary(protocol).await?;
+    let raw = client.volumes_option_summary(protocol, data_type).await?;
     let dto = map::map_protocol_summary(raw, "options_volume");
     ctx.output
         .write_data(&dto, Some(&pretty_protocol_summary))
+        .map_err(io_err)
+}
+
+async fn cmd_volumes_option_history(
+    protocol: &str,
+    data_type: &str,
+    limit: Option<usize>,
+    ctx: &Ctx,
+) -> Result<(), HeatError> {
+    validate_choice("data_type", data_type, OPTIONS_DATA_TYPE_VALUES)?;
+    let client = make_client(ctx)?;
+    let raw = client.volumes_option_history(protocol, data_type).await?;
+    let mut dto = map::map_metric_history_from_summary(raw, "options_volume", protocol, data_type);
+    if let Some(limit) = limit {
+        let start = dto.points.len().saturating_sub(limit);
+        dto.points = dto.points.split_off(start);
+    }
+    ctx.output
+        .write_data(&dto, Some(&pretty_metric_history))
         .map_err(io_err)
 }
 
@@ -1132,6 +1261,25 @@ async fn cmd_volumes_derivative_summary(protocol: &str, ctx: &Ctx) -> Result<(),
         .map_err(io_err)
 }
 
+async fn cmd_volumes_derivative_history(
+    protocol: &str,
+    limit: Option<usize>,
+    ctx: &Ctx,
+) -> Result<(), HeatError> {
+    config::require_api_key(&ctx.config)?;
+    let client = make_client(ctx)?;
+    let raw = client.volumes_derivative_history(protocol).await?;
+    let mut dto =
+        map::map_metric_history_from_summary(raw, "derivatives_volume", protocol, "dailyVolume");
+    if let Some(limit) = limit {
+        let start = dto.points.len().saturating_sub(limit);
+        dto.points = dto.points.split_off(start);
+    }
+    ctx.output
+        .write_data(&dto, Some(&pretty_metric_history))
+        .map_err(io_err)
+}
+
 async fn cmd_volumes_open_interest(sort: &str, limit: usize, ctx: &Ctx) -> Result<(), HeatError> {
     validate_sort(sort, OVERVIEW_SORT_VALUES)?;
     let client = make_client(ctx)?;
@@ -1141,6 +1289,22 @@ async fn cmd_volumes_open_interest(sort: &str, limit: usize, ctx: &Ctx) -> Resul
     dto.protocols.truncate(limit);
     ctx.output
         .write_data(&dto, Some(&pretty_overview))
+        .map_err(io_err)
+}
+
+async fn cmd_volumes_open_interest_history(
+    limit: Option<usize>,
+    ctx: &Ctx,
+) -> Result<(), HeatError> {
+    let client = make_client(ctx)?;
+    let raw = client.volumes_open_interest_history().await?;
+    let mut dto = map::map_metric_history(raw, "open_interest", "all", "openInterest");
+    if let Some(limit) = limit {
+        let start = dto.points.len().saturating_sub(limit);
+        dto.points = dto.points.split_off(start);
+    }
+    ctx.output
+        .write_data(&dto, Some(&pretty_metric_history))
         .map_err(io_err)
 }
 
@@ -1354,11 +1518,28 @@ fn validate_sort(sort: &str, valid: &[&str]) -> Result<(), HeatError> {
     }
 }
 
+fn validate_choice(kind: &str, value: &str, valid: &[&str]) -> Result<(), HeatError> {
+    if valid.contains(&value) {
+        Ok(())
+    } else {
+        Err(HeatError::validation(
+            format!("invalid_{kind}"),
+            format!(
+                "Unknown {kind} value '{}'. Valid options: {}",
+                value,
+                valid.join(", ")
+            ),
+        ))
+    }
+}
+
 const PROTOCOL_SORT_VALUES: &[&str] = &["tvl", "name", "change_1d", "change_7d"];
 const CHAIN_SORT_VALUES: &[&str] = &["tvl", "name"];
 const STABLECOIN_SORT_VALUES: &[&str] = &["circulating", "name"];
 const BRIDGE_SORT_VALUES: &[&str] = &["volume", "name"];
 const OVERVIEW_SORT_VALUES: &[&str] = &["fees", "volume", "name", "change_1d"];
+const FEES_DATA_TYPE_VALUES: &[&str] = &["dailyFees", "dailyRevenue", "dailyHoldersRevenue"];
+const OPTIONS_DATA_TYPE_VALUES: &[&str] = &["dailyPremiumVolume", "dailyNotionalVolume"];
 const YIELD_SORT_VALUES: &[&str] = &["apy", "tvl", "name"];
 const YIELD_BORROW_SORT_VALUES: &[&str] = &["apy", "borrow_apy", "tvl", "name"];
 const PERP_SORT_VALUES: &[&str] = &["funding_rate", "open_interest", "name"];
@@ -2115,6 +2296,34 @@ fn pretty_protocol_summary(dto: &dto::ProtocolSummaryDto) -> String {
     out.push_str(&format!("7d change: {}\n", fmt_pct(dto.change_7d_pct)));
     if !dto.chains.is_empty() {
         out.push_str(&format!("Chains:    {}\n", dto.chains.join(", ")));
+    }
+    out.trim_end_matches('\n').to_owned()
+}
+
+fn pretty_metric_history(dto: &dto::MetricHistoryDto) -> String {
+    let mut out = format!(
+        "{} history — {} ({})\n\n",
+        dto.metric, dto.target, dto.data_type
+    );
+    if dto.points.is_empty() {
+        out.push_str("  No history data.");
+        return out;
+    }
+    out.push_str(&format!("{:<12} {:>14}\n", "DATE", "VALUE"));
+    out.push_str(&"-".repeat(28));
+    out.push('\n');
+    let start = dto.points.len().saturating_sub(30);
+    for p in &dto.points[start..] {
+        out.push_str(&format!(
+            "{:<12} {:>14}\n",
+            format_unix_date(p.timestamp),
+            fmt_usd(Some(p.value_usd)),
+        ));
+    }
+    if start > 0 {
+        out.push_str(&format!(
+            "\n  ({start} earlier points omitted — use --json for full data)"
+        ));
     }
     out.trim_end_matches('\n').to_owned()
 }

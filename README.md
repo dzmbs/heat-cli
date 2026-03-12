@@ -28,6 +28,7 @@
 - **Reliable machine output.** Stdout is data, stderr is diagnostics. JSON, NDJSON, pretty, or quiet — same command style everywhere. Pipe to jq, feed to agents.
 - **Guardrails built in.** `--dry-run` previews, TTY confirmations, `--yes` to opt in for scripts. You stay in control.
 - **Protocol-first design.** Each protocol is a first-class command tree (`heat hl`, `heat pm`, `heat aave`, `heat lifi`, `heat llama`) with native vocabulary and no forced abstractions.
+- **Research-grade market data.** DefiLlama integration includes protocol, chain, price, stablecoin, fee, volume, bridge, yield, and fee-history commands with Heat-owned output.
 
 ## Supported Protocols
 

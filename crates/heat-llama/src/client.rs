@@ -406,6 +406,8 @@ pub struct RawSummaryResponse {
     pub change_1d: Option<f64>,
     pub change_7d: Option<f64>,
     pub change_1m: Option<f64>,
+    #[serde(default)]
+    pub total_data_chart: Vec<(i64, f64)>,
     pub chain_data: Option<serde_json::Value>,
 }
 
@@ -420,6 +422,8 @@ pub struct RawOverviewResponse {
     pub change_1d: Option<f64>,
     pub change_7d: Option<f64>,
     pub change_1m: Option<f64>,
+    #[serde(default)]
+    pub total_data_chart: Vec<(i64, f64)>,
     #[serde(default)]
     pub protocols: Vec<RawOverviewProtocol>,
 }
@@ -1133,6 +1137,22 @@ impl DefiLlamaClient {
         self.get_json(ApiFamily::Main, &path, &[]).await
     }
 
+    pub async fn fees_history(
+        &self,
+        target: &str,
+        data_type: &str,
+    ) -> Result<RawOverviewResponse, HeatError> {
+        self.get_json(
+            ApiFamily::Main,
+            &format!("overview/fees/{target}"),
+            &[
+                ("dataType", data_type),
+                ("excludeTotalDataChartBreakdown", "true"),
+            ],
+        )
+        .await
+    }
+
     // -----------------------------------------------------------------------
     // Volumes
     // -----------------------------------------------------------------------
@@ -1161,6 +1181,18 @@ impl DefiLlamaClient {
             .await
     }
 
+    pub async fn volumes_dex_history(
+        &self,
+        protocol: &str,
+    ) -> Result<RawSummaryResponse, HeatError> {
+        self.get_json(
+            ApiFamily::Main,
+            &format!("summary/dexs/{protocol}"),
+            &[("excludeTotalDataChartBreakdown", "true")],
+        )
+        .await
+    }
+
     pub async fn volumes_options(
         &self,
         chain: Option<&str>,
@@ -1175,20 +1207,43 @@ impl DefiLlamaClient {
     pub async fn volumes_option_summary(
         &self,
         protocol: &str,
+        data_type: Option<&str>,
     ) -> Result<RawSummaryResponse, HeatError> {
-        self.get_json(ApiFamily::Main, &format!("summary/options/{protocol}"), &[])
-            .await
+        let mut query = Vec::new();
+        if let Some(dt) = data_type {
+            query.push(("dataType", dt));
+        }
+        self.get_json(
+            ApiFamily::Main,
+            &format!("summary/options/{protocol}"),
+            &query,
+        )
+        .await
+    }
+
+    pub async fn volumes_option_history(
+        &self,
+        protocol: &str,
+        data_type: &str,
+    ) -> Result<RawSummaryResponse, HeatError> {
+        self.get_json(
+            ApiFamily::Main,
+            &format!("summary/options/{protocol}"),
+            &[("dataType", data_type)],
+        )
+        .await
     }
 
     pub async fn volumes_derivatives(
         &self,
         chain: Option<&str>,
     ) -> Result<RawOverviewResponse, HeatError> {
-        let path = match chain {
-            Some(c) => format!("overview/derivatives/{c}"),
-            None => "overview/derivatives".to_owned(),
-        };
-        self.get_json(ApiFamily::Main, &path, &[]).await
+        let mut query = Vec::new();
+        if let Some(chain) = chain {
+            query.push(("chain", chain));
+        }
+        self.get_json(ApiFamily::Main, "api/overview/derivatives", &query)
+            .await
     }
 
     pub async fn volumes_derivative_summary(
@@ -1197,8 +1252,20 @@ impl DefiLlamaClient {
     ) -> Result<RawSummaryResponse, HeatError> {
         self.get_json(
             ApiFamily::Main,
-            &format!("summary/derivatives/{protocol}"),
-            &[],
+            &format!("api/summary/derivatives/{protocol}"),
+            &[("excludeTotalDataChartBreakdown", "true")],
+        )
+        .await
+    }
+
+    pub async fn volumes_derivative_history(
+        &self,
+        protocol: &str,
+    ) -> Result<RawSummaryResponse, HeatError> {
+        self.get_json(
+            ApiFamily::Main,
+            &format!("api/summary/derivatives/{protocol}"),
+            &[("excludeTotalDataChartBreakdown", "true")],
         )
         .await
     }
@@ -1206,6 +1273,15 @@ impl DefiLlamaClient {
     pub async fn volumes_open_interest(&self) -> Result<RawOverviewResponse, HeatError> {
         self.get_json(ApiFamily::Main, "overview/open-interest", &[])
             .await
+    }
+
+    pub async fn volumes_open_interest_history(&self) -> Result<RawOverviewResponse, HeatError> {
+        self.get_json(
+            ApiFamily::Main,
+            "overview/open-interest",
+            &[("excludeTotalDataChartBreakdown", "true")],
+        )
+        .await
     }
 
     // -----------------------------------------------------------------------

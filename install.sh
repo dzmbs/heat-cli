@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-VERSION="0.4.5"
+VERSION="0.4.6"
 REPO="dzmbs/heat-cli"
 INSTALL_DIR="${HEAT_INSTALL_DIR:-$HOME/.local/bin}"
 

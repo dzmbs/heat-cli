@@ -819,6 +819,52 @@ pub fn map_overview(
     }
 }
 
+pub fn map_metric_history(
+    raw: client::RawOverviewResponse,
+    metric: &str,
+    target: &str,
+    data_type: &str,
+) -> dto::MetricHistoryDto {
+    let points = raw
+        .total_data_chart
+        .into_iter()
+        .map(|(timestamp, value_usd)| dto::MetricHistoryPoint {
+            timestamp,
+            value_usd,
+        })
+        .collect();
+
+    dto::MetricHistoryDto {
+        metric: metric.to_owned(),
+        target: target.to_owned(),
+        data_type: data_type.to_owned(),
+        points,
+    }
+}
+
+pub fn map_metric_history_from_summary(
+    raw: client::RawSummaryResponse,
+    metric: &str,
+    target: &str,
+    data_type: &str,
+) -> dto::MetricHistoryDto {
+    let points = raw
+        .total_data_chart
+        .into_iter()
+        .map(|(timestamp, value_usd)| dto::MetricHistoryPoint {
+            timestamp,
+            value_usd,
+        })
+        .collect();
+
+    dto::MetricHistoryDto {
+        metric: metric.to_owned(),
+        target: target.to_owned(),
+        data_type: data_type.to_owned(),
+        points,
+    }
+}
+
 // ---------------------------------------------------------------------------
 // Institutions
 // ---------------------------------------------------------------------------
@@ -1353,6 +1399,7 @@ mod tests {
             change_1d: Some(5.0),
             change_7d: None,
             change_1m: None,
+            total_data_chart: vec![],
             protocols: vec![],
         };
         let dto = map_overview(raw, "fees", None);
@@ -1376,12 +1423,61 @@ mod tests {
             change_1d: Some(3.5),
             change_7d: Some(-1.2),
             change_1m: None,
+            total_data_chart: vec![],
             chain_data: None,
         };
         let dto = map_protocol_summary(raw, "dex_volume");
         assert_eq!(dto.name, "Uniswap");
         assert_eq!(dto.metric, "dex_volume");
         assert_eq!(dto.total_24h_usd, Some(5_000_000.0));
+    }
+
+    #[test]
+    fn map_metric_history_from_total_data_chart() {
+        let raw = client::RawOverviewResponse {
+            total24h: None,
+            total48hto24h: None,
+            total7d: None,
+            total30d: None,
+            total1y: None,
+            change_1d: None,
+            change_7d: None,
+            change_1m: None,
+            total_data_chart: vec![(1704067200, 1_234.5), (1704153600, 2_345.0)],
+            protocols: vec![],
+        };
+        let dto = map_metric_history(raw, "fees", "hyperliquid", "dailyFees");
+        assert_eq!(dto.metric, "fees");
+        assert_eq!(dto.target, "hyperliquid");
+        assert_eq!(dto.data_type, "dailyFees");
+        assert_eq!(dto.points.len(), 2);
+        assert_eq!(dto.points[0].timestamp, 1704067200);
+        assert_eq!(dto.points[0].value_usd, 1_234.5);
+    }
+
+    #[test]
+    fn map_metric_history_from_summary_chart() {
+        let raw = client::RawSummaryResponse {
+            name: Some("Uniswap".into()),
+            slug: Some("uniswap".into()),
+            category: Some("DEX".into()),
+            chains: vec!["Ethereum".into()],
+            total24h: None,
+            total48hto24h: None,
+            total7d: None,
+            total30d: None,
+            total1y: None,
+            change_1d: None,
+            change_7d: None,
+            change_1m: None,
+            total_data_chart: vec![(1704067200, 10.0), (1704153600, 20.0)],
+            chain_data: None,
+        };
+        let dto = map_metric_history_from_summary(raw, "dex_volume", "uniswap", "dailyVolume");
+        assert_eq!(dto.metric, "dex_volume");
+        assert_eq!(dto.target, "uniswap");
+        assert_eq!(dto.points.len(), 2);
+        assert_eq!(dto.points[1].value_usd, 20.0);
     }
 
     #[test]

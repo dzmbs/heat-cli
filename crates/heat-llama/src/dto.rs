@@ -598,6 +598,20 @@ pub struct OverviewDto {
     pub protocols: Vec<OverviewProtocolRow>,
 }
 
+#[derive(Debug, Clone, Serialize)]
+pub struct MetricHistoryPoint {
+    pub timestamp: i64,
+    pub value_usd: f64,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct MetricHistoryDto {
+    pub metric: String,
+    pub target: String,
+    pub data_type: String,
+    pub points: Vec<MetricHistoryPoint>,
+}
+
 // ---------------------------------------------------------------------------
 // Institutions
 // ---------------------------------------------------------------------------

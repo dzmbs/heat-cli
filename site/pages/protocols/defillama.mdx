@@ -34,17 +34,21 @@ heat llama stablecoins chains
 heat llama stablecoins chart Ethereum
 heat llama stablecoins prices
 
-# Fees and revenue (3 commands)
+# Fees and revenue (4 commands)
 heat llama fees overview --chain Ethereum --sort fees
 heat llama fees chain Ethereum
 heat llama fees protocol aave
+heat llama fees history hyperliquid --data-type dailyFees --limit 30
 
-# Volumes (5 commands)
+# Volumes (11 commands)
 heat llama volumes dexs --sort volume --limit 10
 heat llama volumes dex uniswap
+heat llama volumes dex-history uniswap --limit 30
 heat llama volumes options --sort volume
-heat llama volumes option deribit
+heat llama volumes option derive --data-type dailyPremiumVolume
+heat llama volumes option-history derive --data-type dailyPremiumVolume --limit 30
 heat llama volumes open-interest --sort volume
+heat llama volumes open-interest-history --limit 30
 
 # Yields (2 commands)
 heat llama yields pools --sort apy --limit 10
@@ -69,9 +73,10 @@ heat llama bridges volume Ethereum
 heat llama bridges daystats 1704067200 Ethereum
 heat llama bridges tx 1
 
-# Volumes (2 commands)
+# Volumes (3 pro commands)
 heat llama volumes derivatives --sort volume
-heat llama volumes derivative gmx
+heat llama volumes derivative hyperliquid
+heat llama volumes derivative-history hyperliquid --limit 30
 
 # Yields (5 commands)
 heat llama yields pools-old
@@ -103,11 +108,11 @@ export HEAT_DEFILLAMA_API_KEY=your-key
 | **Coins** | `price`, `historical`, `chart`, `change`, `first`, `block`, `batch-historical` | `liquidity` | 8 |
 | **Stablecoins** | `list`, `get`, `chains`, `chart`, `prices` | `dominance` | 6 |
 | **Bridges** | — | `list`, `get`, `volume`, `daystats`, `tx` | 5 |
-| **Fees** | `overview`, `chain`, `protocol` | — | 3 |
-| **Volumes** | `dexs`, `dex`, `options`, `option`, `open-interest` | `derivatives`, `derivative` | 7 |
+| **Fees** | `overview`, `chain`, `protocol`, `history` | — | 4 |
+| **Volumes** | `dexs`, `dex`, `dex-history`, `options`, `option`, `option-history`, `open-interest`, `open-interest-history` | `derivatives`, `derivative`, `derivative-history` | 11 |
 | **Yields** | `pools`, `chart` | `pools-old`, `borrow`, `lend-borrow-chart`, `perps`, `lsd` | 7 |
 | **Usage** | — | _(top-level)_ | 1 |
-| | **27 free** | **15 pro** | **42** |
+| | **32 free** | **16 pro** | **48** |
 
 All commands are read-only and do not require a signer or account.
 
@@ -115,6 +120,9 @@ All commands are read-only and do not require a signer or account.
 
 - **Yields** commands hit `yields.llama.fi` instead of the main API base URL.
 - **`coins batch-historical`** uses a POST request (accepts many tokens at once).
+- **`fees history`** exposes DefiLlama's `totalDataChart` timeseries from `overview/fees/{target}` and supports `--data-type dailyFees|dailyRevenue|dailyHoldersRevenue`.
+- **`volumes dex-history`**, **`option-history`**, **`derivative-history`**, and **`open-interest-history`** expose timeseries data from DefiLlama summary/overview endpoints.
+- **`volumes option`** and **`option-history`** support `--data-type dailyPremiumVolume|dailyNotionalVolume`.
 - **Pro commands** use `pro-api.llama.fi` as their base URL when a key is set.
 
 ## Output
